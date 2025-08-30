@@ -1,7 +1,10 @@
+// Import CSS for Vite build process
+import './style.css';
+
 // D3.js is loaded via CDN in index.html
 // import * as d3 from 'd3';
 
-class InteractiveChart {
+class SaymonMetricsChart {
     constructor() {
         this.data = [];
         this.currentChartType = 'line';
@@ -16,69 +19,128 @@ class InteractiveChart {
     }
 
     init() {
-        this.generateData();
         this.setupEventListeners();
+        this.updateApiUrl();
+        this.generateSampleData();
         this.createChart();
     }
 
-    generateData(points = 10, min = 0, max = 100) {
+    generateSampleData() {
+        // Generate sample data for demonstration
         this.data = [];
-        for (let i = 0; i < points; i++) {
-            this.data.push({
-                x: i,
-                y: Math.random() * (max - min) + min,
-                label: `Point ${i + 1}`
+        const fromTime = parseInt(document.getElementById('fromTimestamp').value);
+        const toTime = parseInt(document.getElementById('toTimestamp').value);
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
+        const timeStep = (toTime - fromTime) / 20; // 20 data points
+        
+        for (let i = 0; i < 20; i++) {
+            const timestamp = fromTime + (i * timeStep);
+            const dataPoint = {
+                timestamp: timestamp,
+                time: new Date(timestamp)
+            };
+            
+            metrics.forEach((metric, index) => {
+                dataPoint[metric] = Math.random() * 1000 + 100; // Random values
             });
+            
+            this.data.push(dataPoint);
         }
     }
 
     setupEventListeners() {
+        // Load data button
+        d3.select('#loadData').on('click', () => {
+            this.loadMetricsData();
+        });
+
         // Chart type selector
         d3.select('#chartType').on('change', (event) => {
             this.currentChartType = event.target.value;
             this.createChart();
         });
 
-        // Data controls
-        d3.select('#addData').on('click', () => {
-            const newPoint = {
-                x: this.data.length,
-                y: Math.random() * 100,
-                label: `Point ${this.data.length + 1}`
-            };
-            this.data.push(newPoint);
-            this.createChart();
+        // Time range selector
+        d3.select('#timeRange').on('change', (event) => {
+            this.updateTimeRange(event.target.value);
         });
 
-        d3.select('#randomize').on('click', () => {
-            this.generateData();
-            this.createChart();
+        // Update API URL when inputs change
+        ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics'].forEach(id => {
+            d3.select(`#${id}`).on('input', () => {
+                this.updateApiUrl();
+            });
         });
+    }
 
-        d3.select('#updateData').on('click', () => {
-            const points = parseInt(d3.select('#dataPoints').property('value'));
-            const min = parseFloat(d3.select('#minValue').property('value'));
-            const max = parseFloat(d3.select('#maxValue').property('value'));
-            this.generateData(points, min, max);
-            this.createChart();
-        });
+    updateTimeRange(range) {
+        const now = Date.now();
+        let fromTime, toTime = now;
 
-        // Style controls
-        d3.select('#colorScheme').on('change', (event) => {
-            const scheme = event.target.value;
-            this.color = d3.scaleOrdinal(d3[scheme]);
-            this.createChart();
-        });
+        switch (range) {
+            case '1h':
+                fromTime = now - (60 * 60 * 1000); // 1 hour ago
+                break;
+            case '1d':
+                fromTime = now - (24 * 60 * 60 * 1000); // 1 day ago
+                break;
+            case '1w':
+                fromTime = now - (7 * 24 * 60 * 60 * 1000); // 1 week ago
+                break;
+            case '1m':
+                fromTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month ago
+                break;
+            case 'custom':
+            default:
+                return; // Don't change timestamps for custom
+        }
 
-        d3.select('#strokeWidth').on('input', (event) => {
-            this.strokeWidth = parseInt(event.target.value);
-            this.createChart();
-        });
+        document.getElementById('fromTimestamp').value = fromTime;
+        document.getElementById('toTimestamp').value = toTime;
+        this.updateApiUrl();
+    }
 
-        d3.select('#pointSize').on('input', (event) => {
-            this.pointSize = parseInt(event.target.value);
+    updateApiUrl() {
+        const objectId = document.getElementById('objectId').value;
+        const fromTime = document.getElementById('fromTimestamp').value;
+        const toTime = document.getElementById('toTimestamp').value;
+        const downsample = document.getElementById('downsample').value;
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
+        const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+        const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+        
+        document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
+    }
+
+    async loadMetricsData() {
+        const objectId = document.getElementById('objectId').value;
+        const fromTime = document.getElementById('fromTimestamp').value;
+        const toTime = document.getElementById('toTimestamp').value;
+        const downsample = document.getElementById('downsample').value;
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
+        if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+        const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+        
+        try {
+            console.log('Loading data from:', apiUrl);
+            // For now, generate sample data. Replace with actual API call:
+            // const response = await fetch(apiUrl);
+            // this.data = await response.json();
+            
+            this.generateSampleData();
             this.createChart();
-        });
+        } catch (error) {
+            console.error('Error loading metrics data:', error);
+            alert('Error loading metrics data. Check console for details.');
+        }
     }
 
     createChart() {
@@ -104,27 +166,20 @@ class InteractiveChart {
             case 'bar':
                 this.createBarChart(chartGroup, chartWidth, chartHeight);
                 break;
-            case 'scatter':
-                this.createScatterChart(chartGroup, chartWidth, chartHeight);
-                break;
-            case 'area':
-                this.createAreaChart(chartGroup, chartWidth, chartHeight);
-                break;
-            case 'pie':
-                this.createPieChart(chartGroup, chartWidth, chartHeight);
-                break;
         }
 
         this.createLegend();
     }
 
     createLineChart(chartGroup, width, height) {
-        const xScale = d3.scaleLinear()
-            .domain(d3.extent(this.data, d => d.x))
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
+        const xScale = d3.scaleTime()
+            .domain(d3.extent(this.data, d => d.time))
             .range([0, width]);
 
         const yScale = d3.scaleLinear()
-            .domain([0, d3.max(this.data, d => d.y)])
+            .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
             .range([height, 0]);
 
         // Add axes
@@ -150,45 +205,49 @@ class InteractiveChart {
             .attr('class', 'grid')
             .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
-        // Create line generator
-        const line = d3.line()
-            .x(d => xScale(d.x))
-            .y(d => yScale(d.y))
-            .curve(d3.curveMonotoneX);
+        // Create lines for each metric
+        metrics.forEach((metric, index) => {
+            const line = d3.line()
+                .x(d => xScale(d.time))
+                .y(d => yScale(d[metric] || 0))
+                .curve(d3.curveMonotoneX);
 
-        // Add line path
-        chartGroup.append('path')
-            .datum(this.data)
-            .attr('class', 'line-path')
-            .attr('fill', 'none')
-            .attr('stroke', this.color(0))
-            .attr('stroke-width', this.strokeWidth)
-            .attr('d', line);
+            // Add line path
+            chartGroup.append('path')
+                .datum(this.data)
+                .attr('class', 'line-path')
+                .attr('fill', 'none')
+                .attr('stroke', this.color(index))
+                .attr('stroke-width', this.strokeWidth)
+                .attr('d', line);
 
-        // Add data points
-        chartGroup.selectAll('.data-point')
-            .data(this.data)
-            .enter()
-            .append('circle')
-            .attr('class', 'data-point')
-            .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y))
-            .attr('r', this.pointSize)
-            .attr('fill', this.color(0))
-            .attr('stroke', 'white')
-            .attr('stroke-width', 2)
-            .on('mouseover', (event, d) => this.showTooltip(event, d))
-            .on('mouseout', () => this.hideTooltip());
+            // Add data points
+            chartGroup.selectAll(`.data-point-${index}`)
+                .data(this.data)
+                .enter()
+                .append('circle')
+                .attr('class', `data-point data-point-${index}`)
+                .attr('cx', d => xScale(d.time))
+                .attr('cy', d => yScale(d[metric] || 0))
+                .attr('r', this.pointSize)
+                .attr('fill', this.color(index))
+                .attr('stroke', 'white')
+                .attr('stroke-width', 2)
+                .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
+                .on('mouseout', () => this.hideTooltip());
+        });
     }
 
     createBarChart(chartGroup, width, height) {
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
         const xScale = d3.scaleBand()
-            .domain(this.data.map(d => d.x))
+            .domain(this.data.map((d, i) => i))
             .range([0, width])
             .padding(0.1);
 
         const yScale = d3.scaleLinear()
-            .domain([0, d3.max(this.data, d => d.y)])
+            .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
             .range([height, 0]);
 
         // Add axes
@@ -209,187 +268,34 @@ class InteractiveChart {
             .attr('class', 'grid')
             .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
-        // Add bars
-        chartGroup.selectAll('.bar')
-            .data(this.data)
-            .enter()
-            .append('rect')
-            .attr('class', 'bar')
-            .attr('x', d => xScale(d.x))
-            .attr('y', d => yScale(d.y))
-            .attr('width', xScale.bandwidth())
-            .attr('height', d => height - yScale(d.y))
-            .attr('fill', (d, i) => this.color(i))
-            .on('mouseover', (event, d) => this.showTooltip(event, d))
-            .on('mouseout', () => this.hideTooltip());
+        // Add bars for each metric
+        metrics.forEach((metric, metricIndex) => {
+            chartGroup.selectAll(`.bar-${metricIndex}`)
+                .data(this.data)
+                .enter()
+                .append('rect')
+                .attr('class', `bar bar-${metricIndex}`)
+                .attr('x', (d, i) => xScale(i) + (xScale.bandwidth() / metrics.length) * metricIndex)
+                .attr('y', d => yScale(d[metric] || 0))
+                .attr('width', xScale.bandwidth() / metrics.length)
+                .attr('height', d => height - yScale(d[metric] || 0))
+                .attr('fill', this.color(metricIndex))
+                .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
+                .on('mouseout', () => this.hideTooltip());
+        });
     }
 
-    createScatterChart(chartGroup, width, height) {
-        const xScale = d3.scaleLinear()
-            .domain(d3.extent(this.data, d => d.x))
-            .range([0, width]);
-
-        const yScale = d3.scaleLinear()
-            .domain([0, d3.max(this.data, d => d.y)])
-            .range([height, 0]);
-
-        // Add axes
-        const xAxis = d3.axisBottom(xScale);
-        const yAxis = d3.axisLeft(yScale);
-
-        chartGroup.append('g')
-            .attr('class', 'axis')
-            .attr('transform', `translate(0, ${height})`)
-            .call(xAxis);
-
-        chartGroup.append('g')
-            .attr('class', 'axis')
-            .call(yAxis);
-
-        // Add grid
-        chartGroup.append('g')
-            .attr('class', 'grid')
-            .attr('transform', `translate(0, ${height})`)
-            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
-
-        chartGroup.append('g')
-            .attr('class', 'grid')
-            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
-
-        // Add scatter points
-        chartGroup.selectAll('.data-point')
-            .data(this.data)
-            .enter()
-            .append('circle')
-            .attr('class', 'data-point')
-            .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y))
-            .attr('r', this.pointSize)
-            .attr('fill', (d, i) => this.color(i))
-            .attr('stroke', 'white')
-            .attr('stroke-width', 2)
-            .on('mouseover', (event, d) => this.showTooltip(event, d))
-            .on('mouseout', () => this.hideTooltip());
-    }
-
-    createAreaChart(chartGroup, width, height) {
-        const xScale = d3.scaleLinear()
-            .domain(d3.extent(this.data, d => d.x))
-            .range([0, width]);
-
-        const yScale = d3.scaleLinear()
-            .domain([0, d3.max(this.data, d => d.y)])
-            .range([height, 0]);
-
-        // Add axes
-        const xAxis = d3.axisBottom(xScale);
-        const yAxis = d3.axisLeft(yScale);
-
-        chartGroup.append('g')
-            .attr('class', 'axis')
-            .attr('transform', `translate(0, ${height})`)
-            .call(xAxis);
-
-        chartGroup.append('g')
-            .attr('class', 'axis')
-            .call(yAxis);
-
-        // Add grid
-        chartGroup.append('g')
-            .attr('class', 'grid')
-            .attr('transform', `translate(0, ${height})`)
-            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
-
-        chartGroup.append('g')
-            .attr('class', 'grid')
-            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
-
-        // Create area generator
-        const area = d3.area()
-            .x(d => xScale(d.x))
-            .y0(height)
-            .y1(d => yScale(d.y))
-            .curve(d3.curveMonotoneX);
-
-        // Add area
-        chartGroup.append('path')
-            .datum(this.data)
-            .attr('class', 'area-path')
-            .attr('fill', this.color(0))
-            .attr('opacity', 0.6)
-            .attr('d', area);
-
-        // Add line on top
-        const line = d3.line()
-            .x(d => xScale(d.x))
-            .y(d => yScale(d.y))
-            .curve(d3.curveMonotoneX);
-
-        chartGroup.append('path')
-            .datum(this.data)
-            .attr('class', 'line-path')
-            .attr('fill', 'none')
-            .attr('stroke', this.color(0))
-            .attr('stroke-width', this.strokeWidth)
-            .attr('d', line);
-    }
-
-    createPieChart(chartGroup, width, height) {
-        const radius = Math.min(width, height) / 2 - 40;
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        // Create pie generator
-        const pie = d3.pie()
-            .value(d => d.y)
-            .sort(null);
-
-        const arc = d3.arc()
-            .innerRadius(0)
-            .outerRadius(radius);
-
-        const pieData = pie(this.data);
-
-        // Add pie slices
-        chartGroup.selectAll('.pie-slice')
-            .data(pieData)
-            .enter()
-            .append('path')
-            .attr('class', 'pie-slice')
-            .attr('d', arc)
-            .attr('fill', (d, i) => this.color(i))
-            .attr('transform', `translate(${centerX}, ${centerY})`)
-            .on('mouseover', (event, d) => this.showTooltip(event, d.data))
-            .on('mouseout', () => this.hideTooltip());
-
-        // Add labels
-        chartGroup.selectAll('.pie-label')
-            .data(pieData)
-            .enter()
-            .append('text')
-            .attr('class', 'pie-label')
-            .attr('transform', d => `translate(${arc.centroid(d)})`)
-            .attr('text-anchor', 'middle')
-            .attr('dy', '0.35em')
-            .attr('fill', 'white')
-            .attr('font-size', '12px')
-            .attr('font-weight', 'bold')
-            .text(d => d.data.label)
-            .attr('transform', d => `translate(${centerX + arc.centroid(d)[0]}, ${centerY + arc.centroid(d)[1]})`);
-    }
-
-    showTooltip(event, data) {
+    showTooltip(event, data, metric) {
         const tooltip = d3.select('#tooltip');
-        const [x, y] = d3.pointer(event);
         
         tooltip
             .style('opacity', 1)
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 10) + 'px')
             .html(`
-                <strong>${data.label}</strong><br>
-                X: ${data.x}<br>
-                Y: ${data.y.toFixed(2)}
+                <strong>${metric}</strong><br>
+                Time: ${data.time.toLocaleString()}<br>
+                Value: ${(data[metric] || 0).toFixed(2)}
             `);
     }
 
@@ -401,23 +307,16 @@ class InteractiveChart {
         const legend = d3.select('#legend');
         legend.html('');
 
-        if (this.currentChartType === 'pie') {
-            this.data.forEach((d, i) => {
-                legend.append('div')
-                    .attr('class', 'legend-item')
-                    .html(`
-                        <div class="legend-color" style="background-color: ${this.color(i)}"></div>
-                        <span>${d.label}: ${d.y.toFixed(2)}</span>
-                    `);
-            });
-        } else {
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        
+        metrics.forEach((metric, index) => {
             legend.append('div')
                 .attr('class', 'legend-item')
                 .html(`
-                    <div class="legend-color" style="background-color: ${this.color(0)}"></div>
-                    <span>Data Series</span>
+                    <div class="legend-color" style="background-color: ${this.color(index)}"></div>
+                    <span>${metric}</span>
                 `);
-        }
+        });
     }
 }
 
@@ -425,14 +324,14 @@ class InteractiveChart {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM Content Loaded');
     try {
-        new InteractiveChart();
+        new SaymonMetricsChart();
     } catch (error) {
         console.error('Error initializing chart:', error);
         // Fallback initialization
         setTimeout(() => {
             try {
                 console.log('Retrying chart initialization...');
-                new InteractiveChart();
+                new SaymonMetricsChart();
             } catch (retryError) {
                 console.error('Retry failed:', retryError);
             }
@@ -448,7 +347,7 @@ if (document.readyState === 'loading') {
     // Document already loaded
     console.log('Document already loaded, initializing immediately');
     try {
-        new InteractiveChart();
+        new SaymonMetricsChart();
     } catch (error) {
         console.error('Immediate initialization failed:', error);
     }
