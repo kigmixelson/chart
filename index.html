@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Chart App</title>
     <link rel="stylesheet" href="style.css">
+    <!-- D3.js CDN for immediate functionality -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -58,10 +60,10 @@
                         <div class="input-group">
                             <label for="colorScheme">Color Scheme:</label>
                             <select id="colorScheme">
-                                <option value="category10">Category 10</option>
-                                <option value="set1">Set 1</option>
-                                <option value="set2">Set 2</option>
-                                <option value="set3">Set 3</option>
+                                <option value="schemeCategory10">Category 10</option>
+                                <option value="schemeSet1">Set 1</option>
+                                <option value="schemeSet2">Set 2</option>
+                                <option value="schemeSet3">Set 3</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -78,6 +80,6 @@
         </main>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

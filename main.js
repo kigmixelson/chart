@@ -1,4 +1,5 @@
-import * as d3 from 'd3';
+// D3.js is loaded via CDN in index.html
+// import * as d3 from 'd3';
 
 class InteractiveChart {
     constructor() {
