@@ -44,6 +44,17 @@
                         </div>
                         
                         <div class="input-group">
+                            <label for="timeRange">Time Range:</label>
+                            <select id="timeRange">
+                                <option value="custom">Custom</option>
+                                <option value="1h">Last Hour</option>
+                                <option value="1d">Last Day</option>
+                                <option value="1w">Last Week</option>
+                                <option value="1m">Last Month</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
                             <label for="fromTimestamp">From Timestamp (msec):</label>
                             <input type="number" id="fromTimestamp" value="1756497678991" placeholder="From timestamp">
                         </div>
@@ -152,12 +163,44 @@
                     this.createChart();
                 });
 
+                // Time range selector
+                d3.select('#timeRange').on('change', (event) => {
+                    this.updateTimeRange(event.target.value);
+                });
+
                 // Update API URL when inputs change
                 ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics'].forEach(id => {
                     d3.select(`#${id}`).on('input', () => {
                         this.updateApiUrl();
                     });
                 });
+            }
+
+            updateTimeRange(range) {
+                const now = Date.now();
+                let fromTime, toTime = now;
+
+                switch (range) {
+                    case '1h':
+                        fromTime = now - (60 * 60 * 1000); // 1 hour ago
+                        break;
+                    case '1d':
+                        fromTime = now - (24 * 60 * 60 * 1000); // 1 day ago
+                        break;
+                    case '1w':
+                        fromTime = now - (7 * 24 * 60 * 60 * 1000); // 1 week ago
+                        break;
+                    case '1m':
+                        fromTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month ago
+                        break;
+                    case 'custom':
+                    default:
+                        return; // Don't change timestamps for custom
+                }
+
+                document.getElementById('fromTimestamp').value = fromTime;
+                document.getElementById('toTimestamp').value = toTime;
+                this.updateApiUrl();
             }
 
             updateApiUrl() {
