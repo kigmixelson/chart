@@ -103,6 +103,358 @@
         </main>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <script>
+        // D3.js is loaded via CDN in index.html
+        // import * as d3 from 'd3';
+
+        class SaymonMetricsChart {
+            constructor() {
+                this.data = [];
+                this.currentChartType = 'line';
+                this.margin = { top: 40, right: 40, bottom: 60, left: 60 };
+                this.width = 800;
+                this.height = 500;
+                this.color = d3.scaleOrdinal(d3.schemeCategory10);
+                this.strokeWidth = 2;
+                this.pointSize = 6;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateApiUrl();
+                this.generateSampleData();
+                this.createChart();
+            }
+
+            generateSampleData() {
+                // Generate sample data for demonstration
+                this.data = [];
+                const fromTime = parseInt(document.getElementById('fromTimestamp').value);
+                const toTime = parseInt(document.getElementById('toTimestamp').value);
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const timeStep = (toTime - fromTime) / 20; // 20 data points
+                
+                for (let i = 0; i < 20; i++) {
+                    const timestamp = fromTime + (i * timeStep);
+                    const dataPoint = {
+                        timestamp: timestamp,
+                        time: new Date(timestamp)
+                    };
+                    
+                    metrics.forEach((metric, index) => {
+                        dataPoint[metric] = Math.random() * 1000 + 100; // Random values
+                    });
+                    
+                    this.data.push(dataPoint);
+                }
+            }
+
+            setupEventListeners() {
+                // Load data button
+                d3.select('#loadData').on('click', () => {
+                    this.loadMetricsData();
+                });
+
+                // Chart type selector
+                d3.select('#chartType').on('change', (event) => {
+                    this.currentChartType = event.target.value;
+                    this.createChart();
+                });
+
+                // Time range selector
+                d3.select('#timeRange').on('change', (event) => {
+                    this.updateTimeRange(event.target.value);
+                });
+
+                // Update API URL when inputs change
+                ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics'].forEach(id => {
+                    d3.select(`#${id}`).on('input', () => {
+                        this.updateApiUrl();
+                    });
+                });
+            }
+
+            updateTimeRange(range) {
+                const now = Date.now();
+                let fromTime, toTime = now;
+
+                switch (range) {
+                    case '1h':
+                        fromTime = now - (60 * 60 * 1000); // 1 hour ago
+                        break;
+                    case '1d':
+                        fromTime = now - (24 * 60 * 60 * 1000); // 1 day ago
+                        break;
+                    case '1w':
+                        fromTime = now - (7 * 24 * 60 * 60 * 1000); // 1 week ago
+                        break;
+                    case '1m':
+                        fromTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month ago
+                        break;
+                    case 'custom':
+                    default:
+                        return; // Don't change timestamps for custom
+                }
+
+                document.getElementById('fromTimestamp').value = fromTime;
+                document.getElementById('toTimestamp').value = toTime;
+                this.updateApiUrl();
+            }
+
+            updateApiUrl() {
+                const objectId = document.getElementById('objectId').value;
+                const fromTime = document.getElementById('fromTimestamp').value;
+                const toTime = document.getElementById('toTimestamp').value;
+                const downsample = document.getElementById('downsample').value;
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+                
+                document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
+            }
+
+            async loadMetricsData() {
+                const objectId = document.getElementById('objectId').value;
+                const fromTime = document.getElementById('fromTimestamp').value;
+                const toTime = document.getElementById('toTimestamp').value;
+                const downsample = document.getElementById('downsample').value;
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+                
+                try {
+                    console.log('Loading data from:', apiUrl);
+                    // For now, generate sample data. Replace with actual API call:
+                    // const response = await fetch(apiUrl);
+                    // this.data = await response.json();
+                    
+                    this.generateSampleData();
+                    this.createChart();
+                } catch (error) {
+                    console.error('Error loading metrics data:', error);
+                    alert('Error loading metrics data. Check console for details.');
+                }
+            }
+
+            createChart() {
+                const chartContainer = d3.select('#chart');
+                chartContainer.html('');
+
+                const svg = chartContainer
+                    .append('svg')
+                    .attr('width', this.width)
+                    .attr('height', this.height)
+                    .attr('viewBox', `0 0 ${this.width} ${this.height}`);
+
+                const chartGroup = svg.append('g')
+                    .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+
+                const chartWidth = this.width - this.margin.left - this.margin.right;
+                const chartHeight = this.height - this.margin.top - this.margin.bottom;
+
+                switch (this.currentChartType) {
+                    case 'line':
+                        this.createLineChart(chartGroup, chartWidth, chartHeight);
+                        break;
+                    case 'bar':
+                        this.createBarChart(chartGroup, chartWidth, chartHeight);
+                        break;
+                }
+
+                this.createLegend();
+            }
+
+            createLineChart(chartGroup, width, height) {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const xScale = d3.scaleTime()
+                    .domain(d3.extent(this.data, d => d.time))
+                    .range([0, width]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .range([height, 0]);
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale);
+                const yAxis = d3.axisLeft(yScale);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add grid
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Create lines for each metric
+                metrics.forEach((metric, index) => {
+                    const line = d3.line()
+                        .x(d => xScale(d.time))
+                        .y(d => yScale(d[metric] || 0))
+                        .curve(d3.curveMonotoneX);
+
+                    // Add line path
+                    chartGroup.append('path')
+                        .datum(this.data)
+                        .attr('class', 'line-path')
+                        .attr('fill', 'none')
+                        .attr('stroke', this.color(index))
+                        .attr('stroke-width', this.strokeWidth)
+                        .attr('d', line);
+
+                    // Add data points
+                    chartGroup.selectAll(`.data-point-${index}`)
+                        .data(this.data)
+                        .enter()
+                        .append('circle')
+                        .attr('class', `data-point data-point-${index}`)
+                        .attr('cx', d => xScale(d.time))
+                        .attr('cy', d => yScale(d[metric] || 0))
+                        .attr('r', this.pointSize)
+                        .attr('fill', this.color(index))
+                        .attr('stroke', 'white')
+                        .attr('stroke-width', 2)
+                        .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
+                        .on('mouseout', () => this.hideTooltip());
+                });
+            }
+
+            createBarChart(chartGroup, width, height) {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const xScale = d3.scaleBand()
+                    .domain(this.data.map((d, i) => i))
+                    .range([0, width])
+                    .padding(0.1);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .range([height, 0]);
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale);
+                const yAxis = d3.axisLeft(yScale);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add grid
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Add bars for each metric
+                metrics.forEach((metric, metricIndex) => {
+                    chartGroup.selectAll(`.bar-${metricIndex}`)
+                        .data(this.data)
+                        .enter()
+                        .append('rect')
+                        .attr('class', `bar bar-${metricIndex}`)
+                        .attr('x', (d, i) => xScale(i) + (xScale.bandwidth() / metrics.length) * metricIndex)
+                        .attr('y', d => yScale(d[metric] || 0))
+                        .attr('width', xScale.bandwidth() / metrics.length)
+                        .attr('height', d => height - yScale(d[metric] || 0))
+                        .attr('fill', this.color(metricIndex))
+                        .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
+                        .on('mouseout', () => this.hideTooltip());
+                });
+            }
+
+            showTooltip(event, data, metric) {
+                const tooltip = d3.select('#tooltip');
+                
+                tooltip
+                    .style('opacity', 1)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 10) + 'px')
+                    .html(`
+                        <strong>${metric}</strong><br>
+                        Time: ${data.time.toLocaleString()}<br>
+                        Value: ${(data[metric] || 0).toFixed(2)}
+                    `);
+            }
+
+            hideTooltip() {
+                d3.select('#tooltip').style('opacity', 0);
+            }
+
+            createLegend() {
+                const legend = d3.select('#legend');
+                legend.html('');
+
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                metrics.forEach((metric, index) => {
+                    legend.append('div')
+                        .attr('class', 'legend-item')
+                        .html(`
+                            <div class="legend-color" style="background-color: ${this.color(index)}"></div>
+                            <span>${metric}</span>
+                        `);
+                });
+            }
+        }
+
+        // Initialize the chart when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded');
+            try {
+                new SaymonMetricsChart();
+            } catch (error) {
+                console.error('Error initializing chart:', error);
+                // Fallback initialization
+                setTimeout(() => {
+                    try {
+                        console.log('Retrying chart initialization...');
+                        new SaymonMetricsChart();
+                    } catch (retryError) {
+                        console.error('Retry failed:', retryError);
+                    }
+                }, 1000);
+            }
+        });
+
+        // Additional fallback for when DOMContentLoaded might have already fired
+        if (document.readyState === 'loading') {
+            // Document still loading
+            console.log('Document still loading, waiting for DOMContentLoaded');
+        } else {
+            // Document already loaded
+            console.log('Document already loaded, initializing immediately');
+            try {
+                new SaymonMetricsChart();
+            } catch (error) {
+                console.error('Immediate initialization failed:', error);
+            }
+        }
+    </script>
 </body>
 </html>
