@@ -1,5 +1,6 @@
 // Import CSS for Vite build process
 import './style.css';
+import './index-Qi_VvB8y.css';
 
 // D3.js is loaded via CDN in index.html
 // import * as d3 from 'd3';
