@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="style.css">
     <!-- D3.js CDN for immediate functionality -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // Test if D3.js is loaded
+        window.addEventListener('load', function() {
+            if (typeof d3 === 'undefined') {
+                console.error('D3.js not loaded!');
+                document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Error: D3.js failed to load. Please check your internet connection.</div>';
+            } else {
+                console.log('D3.js loaded successfully:', d3.version);
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="app-container">

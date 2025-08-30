@@ -423,5 +423,33 @@ class InteractiveChart {
 
 // Initialize the chart when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new InteractiveChart();
+    console.log('DOM Content Loaded');
+    try {
+        new InteractiveChart();
+    } catch (error) {
+        console.error('Error initializing chart:', error);
+        // Fallback initialization
+        setTimeout(() => {
+            try {
+                console.log('Retrying chart initialization...');
+                new InteractiveChart();
+            } catch (retryError) {
+                console.error('Retry failed:', retryError);
+            }
+        }, 1000);
+    }
 });
+
+// Additional fallback for when DOMContentLoaded might have already fired
+if (document.readyState === 'loading') {
+    // Document still loading
+    console.log('Document still loading, waiting for DOMContentLoaded');
+} else {
+    // Document already loaded
+    console.log('Document already loaded, initializing immediately');
+    try {
+        new InteractiveChart();
+    } catch (error) {
+        console.error('Immediate initialization failed:', error);
+    }
+}
