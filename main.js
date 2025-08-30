@@ -1,0 +1,426 @@
+import * as d3 from 'd3';
+
+class InteractiveChart {
+    constructor() {
+        this.data = [];
+        this.currentChartType = 'line';
+        this.margin = { top: 40, right: 40, bottom: 60, left: 60 };
+        this.width = 800;
+        this.height = 500;
+        this.color = d3.scaleOrdinal(d3.schemeCategory10);
+        this.strokeWidth = 2;
+        this.pointSize = 6;
+        
+        this.init();
+    }
+
+    init() {
+        this.generateData();
+        this.setupEventListeners();
+        this.createChart();
+    }
+
+    generateData(points = 10, min = 0, max = 100) {
+        this.data = [];
+        for (let i = 0; i < points; i++) {
+            this.data.push({
+                x: i,
+                y: Math.random() * (max - min) + min,
+                label: `Point ${i + 1}`
+            });
+        }
+    }
+
+    setupEventListeners() {
+        // Chart type selector
+        d3.select('#chartType').on('change', (event) => {
+            this.currentChartType = event.target.value;
+            this.createChart();
+        });
+
+        // Data controls
+        d3.select('#addData').on('click', () => {
+            const newPoint = {
+                x: this.data.length,
+                y: Math.random() * 100,
+                label: `Point ${this.data.length + 1}`
+            };
+            this.data.push(newPoint);
+            this.createChart();
+        });
+
+        d3.select('#randomize').on('click', () => {
+            this.generateData();
+            this.createChart();
+        });
+
+        d3.select('#updateData').on('click', () => {
+            const points = parseInt(d3.select('#dataPoints').property('value'));
+            const min = parseFloat(d3.select('#minValue').property('value'));
+            const max = parseFloat(d3.select('#maxValue').property('value'));
+            this.generateData(points, min, max);
+            this.createChart();
+        });
+
+        // Style controls
+        d3.select('#colorScheme').on('change', (event) => {
+            const scheme = event.target.value;
+            this.color = d3.scaleOrdinal(d3[scheme]);
+            this.createChart();
+        });
+
+        d3.select('#strokeWidth').on('input', (event) => {
+            this.strokeWidth = parseInt(event.target.value);
+            this.createChart();
+        });
+
+        d3.select('#pointSize').on('input', (event) => {
+            this.pointSize = parseInt(event.target.value);
+            this.createChart();
+        });
+    }
+
+    createChart() {
+        const chartContainer = d3.select('#chart');
+        chartContainer.html('');
+
+        const svg = chartContainer
+            .append('svg')
+            .attr('width', this.width)
+            .attr('height', this.height)
+            .attr('viewBox', `0 0 ${this.width} ${this.height}`);
+
+        const chartGroup = svg.append('g')
+            .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+
+        const chartWidth = this.width - this.margin.left - this.margin.right;
+        const chartHeight = this.height - this.margin.top - this.margin.bottom;
+
+        switch (this.currentChartType) {
+            case 'line':
+                this.createLineChart(chartGroup, chartWidth, chartHeight);
+                break;
+            case 'bar':
+                this.createBarChart(chartGroup, chartWidth, chartHeight);
+                break;
+            case 'scatter':
+                this.createScatterChart(chartGroup, chartWidth, chartHeight);
+                break;
+            case 'area':
+                this.createAreaChart(chartGroup, chartWidth, chartHeight);
+                break;
+            case 'pie':
+                this.createPieChart(chartGroup, chartWidth, chartHeight);
+                break;
+        }
+
+        this.createLegend();
+    }
+
+    createLineChart(chartGroup, width, height) {
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(this.data, d => d.x))
+            .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(this.data, d => d.y)])
+            .range([height, 0]);
+
+        // Add axes
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .attr('transform', `translate(0, ${height})`)
+            .call(xAxis);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .call(yAxis);
+
+        // Add grid
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+        // Create line generator
+        const line = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(d.y))
+            .curve(d3.curveMonotoneX);
+
+        // Add line path
+        chartGroup.append('path')
+            .datum(this.data)
+            .attr('class', 'line-path')
+            .attr('fill', 'none')
+            .attr('stroke', this.color(0))
+            .attr('stroke-width', this.strokeWidth)
+            .attr('d', line);
+
+        // Add data points
+        chartGroup.selectAll('.data-point')
+            .data(this.data)
+            .enter()
+            .append('circle')
+            .attr('class', 'data-point')
+            .attr('cx', d => xScale(d.x))
+            .attr('cy', d => yScale(d.y))
+            .attr('r', this.pointSize)
+            .attr('fill', this.color(0))
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2)
+            .on('mouseover', (event, d) => this.showTooltip(event, d))
+            .on('mouseout', () => this.hideTooltip());
+    }
+
+    createBarChart(chartGroup, width, height) {
+        const xScale = d3.scaleBand()
+            .domain(this.data.map(d => d.x))
+            .range([0, width])
+            .padding(0.1);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(this.data, d => d.y)])
+            .range([height, 0]);
+
+        // Add axes
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .attr('transform', `translate(0, ${height})`)
+            .call(xAxis);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .call(yAxis);
+
+        // Add grid
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+        // Add bars
+        chartGroup.selectAll('.bar')
+            .data(this.data)
+            .enter()
+            .append('rect')
+            .attr('class', 'bar')
+            .attr('x', d => xScale(d.x))
+            .attr('y', d => yScale(d.y))
+            .attr('width', xScale.bandwidth())
+            .attr('height', d => height - yScale(d.y))
+            .attr('fill', (d, i) => this.color(i))
+            .on('mouseover', (event, d) => this.showTooltip(event, d))
+            .on('mouseout', () => this.hideTooltip());
+    }
+
+    createScatterChart(chartGroup, width, height) {
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(this.data, d => d.x))
+            .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(this.data, d => d.y)])
+            .range([height, 0]);
+
+        // Add axes
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .attr('transform', `translate(0, ${height})`)
+            .call(xAxis);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .call(yAxis);
+
+        // Add grid
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+        // Add scatter points
+        chartGroup.selectAll('.data-point')
+            .data(this.data)
+            .enter()
+            .append('circle')
+            .attr('class', 'data-point')
+            .attr('cx', d => xScale(d.x))
+            .attr('cy', d => yScale(d.y))
+            .attr('r', this.pointSize)
+            .attr('fill', (d, i) => this.color(i))
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2)
+            .on('mouseover', (event, d) => this.showTooltip(event, d))
+            .on('mouseout', () => this.hideTooltip());
+    }
+
+    createAreaChart(chartGroup, width, height) {
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(this.data, d => d.x))
+            .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(this.data, d => d.y)])
+            .range([height, 0]);
+
+        // Add axes
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .attr('transform', `translate(0, ${height})`)
+            .call(xAxis);
+
+        chartGroup.append('g')
+            .attr('class', 'axis')
+            .call(yAxis);
+
+        // Add grid
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+        chartGroup.append('g')
+            .attr('class', 'grid')
+            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+        // Create area generator
+        const area = d3.area()
+            .x(d => xScale(d.x))
+            .y0(height)
+            .y1(d => yScale(d.y))
+            .curve(d3.curveMonotoneX);
+
+        // Add area
+        chartGroup.append('path')
+            .datum(this.data)
+            .attr('class', 'area-path')
+            .attr('fill', this.color(0))
+            .attr('opacity', 0.6)
+            .attr('d', area);
+
+        // Add line on top
+        const line = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(d.y))
+            .curve(d3.curveMonotoneX);
+
+        chartGroup.append('path')
+            .datum(this.data)
+            .attr('class', 'line-path')
+            .attr('fill', 'none')
+            .attr('stroke', this.color(0))
+            .attr('stroke-width', this.strokeWidth)
+            .attr('d', line);
+    }
+
+    createPieChart(chartGroup, width, height) {
+        const radius = Math.min(width, height) / 2 - 40;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Create pie generator
+        const pie = d3.pie()
+            .value(d => d.y)
+            .sort(null);
+
+        const arc = d3.arc()
+            .innerRadius(0)
+            .outerRadius(radius);
+
+        const pieData = pie(this.data);
+
+        // Add pie slices
+        chartGroup.selectAll('.pie-slice')
+            .data(pieData)
+            .enter()
+            .append('path')
+            .attr('class', 'pie-slice')
+            .attr('d', arc)
+            .attr('fill', (d, i) => this.color(i))
+            .attr('transform', `translate(${centerX}, ${centerY})`)
+            .on('mouseover', (event, d) => this.showTooltip(event, d.data))
+            .on('mouseout', () => this.hideTooltip());
+
+        // Add labels
+        chartGroup.selectAll('.pie-label')
+            .data(pieData)
+            .enter()
+            .append('text')
+            .attr('class', 'pie-label')
+            .attr('transform', d => `translate(${arc.centroid(d)})`)
+            .attr('text-anchor', 'middle')
+            .attr('dy', '0.35em')
+            .attr('fill', 'white')
+            .attr('font-size', '12px')
+            .attr('font-weight', 'bold')
+            .text(d => d.data.label)
+            .attr('transform', d => `translate(${centerX + arc.centroid(d)[0]}, ${centerY + arc.centroid(d)[1]})`);
+    }
+
+    showTooltip(event, data) {
+        const tooltip = d3.select('#tooltip');
+        const [x, y] = d3.pointer(event);
+        
+        tooltip
+            .style('opacity', 1)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px')
+            .html(`
+                <strong>${data.label}</strong><br>
+                X: ${data.x}<br>
+                Y: ${data.y.toFixed(2)}
+            `);
+    }
+
+    hideTooltip() {
+        d3.select('#tooltip').style('opacity', 0);
+    }
+
+    createLegend() {
+        const legend = d3.select('#legend');
+        legend.html('');
+
+        if (this.currentChartType === 'pie') {
+            this.data.forEach((d, i) => {
+                legend.append('div')
+                    .attr('class', 'legend-item')
+                    .html(`
+                        <div class="legend-color" style="background-color: ${this.color(i)}"></div>
+                        <span>${d.label}: ${d.y.toFixed(2)}</span>
+                    `);
+            });
+        } else {
+            legend.append('div')
+                .attr('class', 'legend-item')
+                .html(`
+                    <div class="legend-color" style="background-color: ${this.color(0)}"></div>
+                    <span>Data Series</span>
+                `);
+        }
+    }
+}
+
+// Initialize the chart when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new InteractiveChart();
+});
