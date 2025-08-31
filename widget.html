@@ -118,6 +118,7 @@
                 this.color = d3.scaleOrdinal(d3.schemeCategory10);
                 this.strokeWidth = 2;
                 this.pointSize = 4;
+                this.reloadInterval = null;
                 
                 this.init();
             }
@@ -172,6 +173,9 @@
                 
                 // Auto-load data
                 this.loadMetricsData();
+                
+                // Set up automatic reload based on period
+                this.setupAutoReload();
             }
 
             calculateTimeRange(period) {
@@ -216,8 +220,39 @@
                 };
             }
 
+            setupAutoReload() {
+                // Clear any existing interval
+                if (this.reloadInterval) {
+                    clearInterval(this.reloadInterval);
+                }
+
+                // Set reload interval based on period
+                let reloadIntervalMs;
+                if (this.config.period && this.config.period.toLowerCase() === 'hour') {
+                    reloadIntervalMs = 60 * 1000; // 1 minute for hour period
+                    console.log('Setting up auto-reload every 1 minute for hour period');
+                } else {
+                    reloadIntervalMs = 60 * 60 * 1000; // 1 hour for other periods
+                    console.log('Setting up auto-reload every 1 hour for other periods');
+                }
+
+                // Set up the interval
+                this.reloadInterval = setInterval(() => {
+                    console.log('Auto-reloading widget data...');
+                    this.loadMetricsData();
+                }, reloadIntervalMs);
+            }
+
             async loadMetricsData() {
                 try {
+                    // Recalculate time range if using period (for auto-reload)
+                    if (this.config.period) {
+                        const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(this.config.period);
+                        this.config.fromTimestamp = fromTimestamp;
+                        this.config.toTimestamp = toTimestamp;
+                        this.config.downsample = downsample;
+                    }
+
                     const metrics = this.config.metrics.split(',').map(m => m.trim());
                     const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
                     
@@ -599,8 +634,17 @@
         }
 
         // Initialize the widget when the page loads
+        let widget;
         document.addEventListener('DOMContentLoaded', function() {
-            new SaymonWidget();
+            widget = new SaymonWidget();
+        });
+
+        // Cleanup when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (widget && widget.reloadInterval) {
+                clearInterval(widget.reloadInterval);
+                console.log('Widget auto-reload stopped');
+            }
         });
     </script>
 </body>
