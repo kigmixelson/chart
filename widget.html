@@ -353,12 +353,15 @@
             createLineChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 
+                // Filter data to remove first point when showing differences
+                const chartData = this.config.dataType === 'diff' ? this.data.slice(1) : this.data;
+                
                 const xScale = d3.scaleTime()
-                    .domain(d3.extent(this.data, d => d.time))
+                    .domain(d3.extent(chartData, d => d.time))
                     .range([0, width]);
 
                 // Use appropriate values for Y scale based on data type
-                const maxValue = d3.max(this.data, d => Math.max(...metrics.map(m => {
+                const maxValue = d3.max(chartData, d => Math.max(...metrics.map(m => {
                     return this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
                 })));
                 const yScale = d3.scaleLinear()
@@ -417,7 +420,7 @@
 
                 // Add lines for each metric
                 metrics.forEach((metric, index) => {
-                    const lineData = this.data.map(d => ({
+                    const lineData = chartData.map(d => ({
                         time: d.time,
                         value: this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0),
                         counterValue: d[metric] || 0,
@@ -456,14 +459,17 @@
             createBarChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 
+                // Filter data to remove first point when showing differences
+                const chartData = this.config.dataType === 'diff' ? this.data.slice(1) : this.data;
+                
                 const xScale = d3.scaleBand()
-                    .domain(this.data.map(d => d.time))
+                    .domain(chartData.map(d => d.time))
                     .range([0, width])
                     .padding(0.1);
 
                 // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                    .domain([0, d3.max(chartData, d => Math.max(...metrics.map(m => {
                         return this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
                     })))])
                     .range([height, 0]);
@@ -505,7 +511,7 @@
                 // Add bars for each metric
                 metrics.forEach((metric, index) => {
                     chartGroup.selectAll(`.bars-${index}`)
-                        .data(this.data)
+                        .data(chartData)
                         .enter()
                         .append('rect')
                         .attr('class', `bar bars-${index}`)

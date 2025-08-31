@@ -372,13 +372,16 @@
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 const dataType = document.getElementById('dataType').value;
                 
+                // Filter data to remove first point when showing differences
+                const chartData = dataType === 'diff' ? this.data.slice(1) : this.data;
+                
                 const xScale = d3.scaleTime()
-                    .domain(d3.extent(this.data, d => d.time))
+                    .domain(d3.extent(chartData, d => d.time))
                     .range([0, width]);
 
                 // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                    .domain([0, d3.max(chartData, d => Math.max(...metrics.map(m => {
                         return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
                     })))])
                     .range([height, 0]);
@@ -426,7 +429,7 @@
 
                     // Add line path with different stroke width for rate vs counter
                     chartGroup.append('path')
-                        .datum(this.data)
+                        .datum(chartData)
                         .attr('class', 'line-path')
                         .attr('fill', 'none')
                         .attr('stroke', this.color(index))
@@ -435,7 +438,7 @@
 
                     // Add data points
                     chartGroup.selectAll(`.data-point-${index}`)
-                        .data(this.data)
+                        .data(chartData)
                         .enter()
                         .append('circle')
                         .attr('class', `data-point data-point-${index}`)
@@ -454,14 +457,17 @@
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 const dataType = document.getElementById('dataType').value;
                 
+                // Filter data to remove first point when showing differences
+                const chartData = dataType === 'diff' ? this.data.slice(1) : this.data;
+                
                 const xScale = d3.scaleBand()
-                    .domain(this.data.map((d, i) => i))
+                    .domain(chartData.map((d, i) => i))
                     .range([0, width])
                     .padding(0.1);
 
                 // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                    .domain([0, d3.max(chartData, d => Math.max(...metrics.map(m => {
                         return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
                     })))])
                     .range([height, 0]);
@@ -498,7 +504,7 @@
                 // Add bars for each metric using appropriate values
                 metrics.forEach((metric, metricIndex) => {
                     chartGroup.selectAll(`.bar-${metricIndex}`)
-                        .data(this.data)
+                        .data(chartData)
                         .enter()
                         .append('rect')
                         .attr('class', `bar bar-${metricIndex}`)
