@@ -243,6 +243,26 @@
                 }, reloadIntervalMs);
             }
 
+            getTimeFormat() {
+                if (!this.config.period) {
+                    // Default format for custom time ranges
+                    return d3.timeFormat('%m/%d %H:%M');
+                }
+
+                switch (this.config.period.toLowerCase()) {
+                    case 'hour':
+                        return d3.timeFormat('%H:%M'); // Hours:Minutes
+                    case 'day':
+                        return d3.timeFormat('%H:%M'); // Hours:Minutes
+                    case 'week':
+                        return d3.timeFormat('%m/%d'); // Month/Day
+                    case 'month':
+                        return d3.timeFormat('%m/%d'); // Month/Day
+                    default:
+                        return d3.timeFormat('%m/%d %H:%M'); // Default format
+                }
+            }
+
             async loadMetricsData() {
                 try {
                     // Recalculate time range if using period (for auto-reload)
@@ -448,7 +468,7 @@
                 // Add axes
                 const xAxis = d3.axisBottom(xScale)
                     .ticks(xTicks)
-                    .tickFormat(d3.timeFormat(width < 400 ? '%H:%M' : '%m/%d %H:%M')); // Shorter format for small screens
+                    .tickFormat(this.getTimeFormat());
                 
                 const yAxis = d3.axisLeft(yScale)
                     .tickFormat(d => {

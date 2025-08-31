@@ -216,31 +216,31 @@
                         this.data[i][`${metric}_diff`] = difference;
                     }
                     
-                                    // For the first data point, set difference to 0 or null
-                this.data[0][`${metric}_diff`] = 0;
-            });
-            
-            // Remove data points with negative differences
-            const originalLength = this.data.length;
-            this.data = this.data.filter((point, index) => {
-                const hasNegativeDiff = metrics.some(metric => {
-                    const diff = point[`${metric}_diff`];
-                    return diff < 0;
+                    // For the first data point, set difference to 0 or null
+                    this.data[0][`${metric}_diff`] = 0;
                 });
                 
-                if (hasNegativeDiff) {
-                    console.log(`Removing data point ${index} due to negative difference`);
+                // Remove data points with negative differences
+                const originalLength = this.data.length;
+                this.data = this.data.filter((point, index) => {
+                    const hasNegativeDiff = metrics.some(metric => {
+                        const diff = point[`${metric}_diff`];
+                        return diff < 0;
+                    });
+                    
+                    if (hasNegativeDiff) {
+                        console.log(`Removing data point ${index} due to negative difference`);
+                    }
+                    
+                    return !hasNegativeDiff;
+                });
+                
+                const removedCount = originalLength - this.data.length;
+                if (removedCount > 0) {
+                    console.log(`Removed ${removedCount} data points with negative differences`);
                 }
                 
-                return !hasNegativeDiff;
-            });
-            
-            const removedCount = originalLength - this.data.length;
-            if (removedCount > 0) {
-                console.log(`Removed ${removedCount} data points with negative differences`);
-            }
-            
-            console.log('Calculated differences for metrics:', metrics);
+                console.log('Calculated differences for metrics:', metrics);
                 
                 // Log some sample data to show the difference
                 if (this.data.length > 0) {
@@ -258,6 +258,12 @@
                         });
                     }
                 }
+            }
+
+            getTimeFormat() {
+                // For main chart, use a default format since it doesn't have period parameter
+                // This can be enhanced later if needed
+                return d3.timeFormat('%m/%d %H:%M');
             }
 
             setupEventListeners() {
@@ -424,7 +430,8 @@
                     .text(dataType === 'diff' ? '📈 Rate Chart (Differences)' : '📊 Counter Chart (Raw Values)');
 
                 // Add axes
-                const xAxis = d3.axisBottom(xScale);
+                const xAxis = d3.axisBottom(xScale)
+                    .tickFormat(this.getTimeFormat());
                 const yAxis = d3.axisLeft(yScale);
 
                 chartGroup.append('g')
