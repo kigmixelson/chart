@@ -56,6 +56,11 @@ class SaymonMetricsChart {
             this.loadMetricsData();
         });
 
+        // Test API button
+        d3.select('#testApi').on('click', () => {
+            this.testApiConnection();
+        });
+
         // Chart type selector
         d3.select('#chartType').on('change', (event) => {
             this.currentChartType = event.target.value;
@@ -68,7 +73,7 @@ class SaymonMetricsChart {
         });
 
         // Update API URL when inputs change
-        ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics'].forEach(id => {
+        ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics', 'authToken'].forEach(id => {
             d3.select(`#${id}`).on('input', () => {
                 this.updateApiUrl();
             });
@@ -108,9 +113,10 @@ class SaymonMetricsChart {
         const toTime = document.getElementById('toTimestamp').value;
         const downsample = document.getElementById('downsample').value;
         const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        const authToken = document.getElementById('authToken').value;
         
         const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-        const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+        const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
         
         document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
     }
@@ -121,26 +127,174 @@ class SaymonMetricsChart {
         const toTime = document.getElementById('toTimestamp').value;
         const downsample = document.getElementById('downsample').value;
         const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        const authToken = document.getElementById('authToken').value;
         
         if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
             alert('Please fill in all required fields');
             return;
         }
 
+        if (!authToken) {
+            alert('Please enter the authentication token');
+            return;
+        }
+
         const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-        const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+        const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
         
         try {
             console.log('Loading data from:', apiUrl);
-            // For now, generate sample data. Replace with actual API call:
-            // const response = await fetch(apiUrl);
-            // this.data = await response.json();
             
-            this.generateSampleData();
+            // Show loading indicator
+            const loadButton = document.getElementById('loadData');
+            const originalText = loadButton.textContent;
+            loadButton.textContent = 'Loading...';
+            loadButton.disabled = true;
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const rawData = await response.json();
+            console.log('Raw API response:', rawData);
+            
+            // Transform the data to the expected format
+            this.data = this.transformApiData(rawData);
+            console.log('Transformed data:', this.data);
+            
             this.createChart();
         } catch (error) {
             console.error('Error loading metrics data:', error);
-            alert('Error loading metrics data. Check console for details.');
+            alert(`Error loading metrics data: ${error.message}. Check console for details.`);
+        } finally {
+            // Restore button
+            const loadButton = document.getElementById('loadData');
+            loadButton.textContent = originalText;
+            loadButton.disabled = false;
+        }
+    }
+
+    transformApiData(rawData) {
+        const transformedData = [];
+        
+        if (!Array.isArray(rawData) || rawData.length === 0) {
+            console.warn('No data received from API');
+            return [];
+        }
+        
+        // Get all unique timestamps from all metrics
+        const allTimestamps = new Set();
+        rawData.forEach(metricData => {
+            if (metricData.dps && Array.isArray(metricData.dps)) {
+                metricData.dps.forEach(([timestamp]) => {
+                    allTimestamps.add(timestamp);
+                });
+            }
+        });
+        
+        // Sort timestamps
+        const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+        
+        // Create data points for each timestamp
+        sortedTimestamps.forEach(timestamp => {
+            const dataPoint = {
+                timestamp: timestamp,
+                time: new Date(timestamp)
+            };
+            
+            // Add values for each metric
+            rawData.forEach(metricData => {
+                const metricName = metricData.metric;
+                const dpsEntry = metricData.dps.find(([ts]) => ts === timestamp);
+                if (dpsEntry) {
+                    dataPoint[metricName] = dpsEntry[1];
+                }
+            });
+            
+            transformedData.push(dataPoint);
+        });
+        
+        // Display data summary
+        console.log(`Transformed ${transformedData.length} data points`);
+        if (transformedData.length > 0) {
+            console.log('Sample data point:', transformedData[0]);
+            console.log('Available metrics:', Object.keys(transformedData[0]).filter(key => key !== 'timestamp' && key !== 'time'));
+        }
+        
+        return transformedData;
+    }
+
+    async testApiConnection() {
+        const objectId = document.getElementById('objectId').value;
+        const fromTime = document.getElementById('fromTimestamp').value;
+        const toTime = document.getElementById('toTimestamp').value;
+        const downsample = document.getElementById('downsample').value;
+        const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+        const authToken = document.getElementById('authToken').value;
+        
+        if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0 || !authToken) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+        const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
+        
+        try {
+            console.log('Testing API connection to:', apiUrl);
+            
+            const testButton = document.getElementById('testApi');
+            const originalText = testButton.textContent;
+            testButton.textContent = 'Testing...';
+            testButton.disabled = true;
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const rawData = await response.json();
+            console.log('Raw API response:', rawData);
+            
+            // Display response info
+            const responseInfo = {
+                status: response.status,
+                statusText: response.statusText,
+                dataType: Array.isArray(rawData) ? 'Array' : typeof rawData,
+                dataLength: Array.isArray(rawData) ? rawData.length : 'N/A',
+                sampleData: Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : rawData
+            };
+            
+            console.log('Response info:', responseInfo);
+            alert(`API Test Successful!\nStatus: ${responseInfo.status}\nData Type: ${responseInfo.dataType}\nData Length: ${responseInfo.dataLength}\n\nCheck console for detailed response.`);
+            
+        } catch (error) {
+            console.error('API Test Error:', error);
+            alert(`API Test Failed: ${error.message}\n\nThis might be due to CORS restrictions. Check console for details.`);
+        } finally {
+            const testButton = document.getElementById('testApi');
+            testButton.textContent = originalText;
+            testButton.disabled = false;
         }
     }
 

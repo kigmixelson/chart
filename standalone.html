@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAYMON Metrics Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .app-container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; color: white; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .main-content { display: grid; grid-template-columns: 1fr 350px; gap: 24px; align-items: start; }
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+            min-height: 600px;
+        }
+        .chart {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            overflow: visible;
+            background: rgba(255, 255, 255, 0.5);
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+        .sidebar { display: flex; flex-direction: column; gap: 24px; }
+        .config-panel, .api-info {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .input-group { margin-bottom: 16px; }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #4a5568;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.6);
+        }
+        .api-url {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        .api-url code {
+            color: #2d3748;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        .cors-notice {
+            margin-top: 12px;
+            padding: 12px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #856404;
+        }
+        .axis path, .axis line { stroke: #cbd5e0; }
+        .axis text { fill: #4a5568; font-size: 12px; }
+        .grid line { stroke: #e2e8f0; stroke-opacity: 0.7; }
+        .grid path { stroke-width: 0; }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+        .legend {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #4a5568;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        @media (max-width: 1024px) {
+            .main-content { grid-template-columns: 1fr; }
+            .sidebar { order: -1; }
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 2rem; }
+            .chart { height: 400px; min-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>📊 SAYMON Metrics Chart</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="chart-container">
+                <div id="chart" class="chart">
+                    <div style="text-align: center; color: #666;">
+                        <p>Click "Load Metrics Data" to display the chart</p>
+                    </div>
+                </div>
+                <div class="chart-info">
+                    <div class="tooltip" id="tooltip"></div>
+                    <div class="legend" id="legend"></div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="config-panel">
+                    <h3>Metrics Configuration</h3>
+                    <div class="config-inputs">
+                        <div class="input-group">
+                            <label for="objectId">Object ID:</label>
+                            <input type="text" id="objectId" value="67cb1f1f120ab073c5adb8a2" placeholder="Enter object ID">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="timeRange">Time Range:</label>
+                            <select id="timeRange">
+                                <option value="custom">Custom</option>
+                                <option value="1h">Last Hour</option>
+                                <option value="1d">Last Day</option>
+                                <option value="1w">Last Week</option>
+                                <option value="1m">Last Month</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="fromTimestamp">From Timestamp (msec):</label>
+                            <input type="number" id="fromTimestamp" value="1756497678991" placeholder="From timestamp">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="toTimestamp">To Timestamp (msec):</label>
+                            <input type="number" id="toTimestamp" value="1756592718991" placeholder="To timestamp">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="downsample">Downsample:</label>
+                            <select id="downsample">
+                                <option value="5m-avg">5m-avg</option>
+                                <option value="1m-avg">1m-avg</option>
+                                <option value="10m-avg">10m-avg</option>
+                                <option value="15m-avg">15m-avg</option>
+                                <option value="30m-avg">30m-avg</option>
+                                <option value="1h-avg">1h-avg</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="metrics">Metrics (comma-separated):</label>
+                            <input type="text" id="metrics" value="ifHCInOctets,ifHCOutOctets" placeholder="ifHCInOctets,ifHCOutOctets">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="authToken">Authentication Token:</label>
+                            <input type="text" id="authToken" value="285c4fd9-6335-41eb-b516-189eb7482d19" placeholder="Enter auth token">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="chartType">Chart Type:</label>
+                            <select id="chartType">
+                                <option value="line">Line Chart</option>
+                                <option value="bar">Bar Chart</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="loadData" class="btn btn-primary">Load Metrics Data</button>
+                    <button id="testApi" class="btn btn-secondary">Test API Connection</button>
+                </div>
+
+                <div class="api-info">
+                    <h3>API Endpoint</h3>
+                    <div class="api-url" id="apiUrl">
+                        <code>https://bccdemo.cpult.ru/node/api/objects/67cb1f1f120ab073c5adb8a2/history?from=1756497678991&to=1756592718991&downsample=5m-avg&metrics%5B%5D=ifHCInOctets&metrics%5B%5D=ifHCOutOctets&auth-token=285c4fd9-6335-41eb-b516-189eb7482d19</code>
+                    </div>
+                    <div class="cors-notice">
+                        <p><strong>Note:</strong> If you encounter CORS errors, you may need to use a CORS proxy or run this application from a server that allows cross-origin requests.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        class SaymonMetricsChart {
+            constructor() {
+                this.data = [];
+                this.currentChartType = 'line';
+                this.margin = { top: 40, right: 40, bottom: 60, left: 60 };
+                this.width = 800;
+                this.height = 500;
+                this.color = d3.scaleOrdinal(d3.schemeCategory10);
+                this.strokeWidth = 2;
+                this.pointSize = 6;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateApiUrl();
+            }
+
+            setupEventListeners() {
+                // Load data button
+                d3.select('#loadData').on('click', () => {
+                    this.loadMetricsData();
+                });
+
+                // Test API button
+                d3.select('#testApi').on('click', () => {
+                    this.testApiConnection();
+                });
+
+                // Chart type selector
+                d3.select('#chartType').on('change', (event) => {
+                    this.currentChartType = event.target.value;
+                    this.createChart();
+                });
+
+                // Time range selector
+                d3.select('#timeRange').on('change', (event) => {
+                    this.updateTimeRange(event.target.value);
+                });
+
+                // Update API URL when inputs change
+                ['objectId', 'fromTimestamp', 'toTimestamp', 'downsample', 'metrics', 'authToken'].forEach(id => {
+                    d3.select(`#${id}`).on('input', () => {
+                        this.updateApiUrl();
+                    });
+                });
+            }
+
+            updateTimeRange(range) {
+                const now = Date.now();
+                let fromTime, toTime = now;
+
+                switch (range) {
+                    case '1h':
+                        fromTime = now - (60 * 60 * 1000);
+                        break;
+                    case '1d':
+                        fromTime = now - (24 * 60 * 60 * 1000);
+                        break;
+                    case '1w':
+                        fromTime = now - (7 * 24 * 60 * 60 * 1000);
+                        break;
+                    case '1m':
+                        fromTime = now - (30 * 24 * 60 * 60 * 1000);
+                        break;
+                    case 'custom':
+                    default:
+                        return;
+                }
+
+                document.getElementById('fromTimestamp').value = fromTime;
+                document.getElementById('toTimestamp').value = toTime;
+                this.updateApiUrl();
+            }
+
+            updateApiUrl() {
+                const objectId = document.getElementById('objectId').value;
+                const fromTime = document.getElementById('fromTimestamp').value;
+                const toTime = document.getElementById('toTimestamp').value;
+                const downsample = document.getElementById('downsample').value;
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const authToken = document.getElementById('authToken').value;
+                
+                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
+                
+                document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
+            }
+
+            async loadMetricsData() {
+                const objectId = document.getElementById('objectId').value;
+                const fromTime = document.getElementById('fromTimestamp').value;
+                const toTime = document.getElementById('toTimestamp').value;
+                const downsample = document.getElementById('downsample').value;
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const authToken = document.getElementById('authToken').value;
+                
+                if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                if (!authToken) {
+                    alert('Please enter the authentication token');
+                    return;
+                }
+
+                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
+                
+                try {
+                    console.log('Loading data from:', apiUrl);
+                    
+                    // Show loading indicator
+                    const loadButton = document.getElementById('loadData');
+                    const originalText = loadButton.textContent;
+                    loadButton.textContent = 'Loading...';
+                    loadButton.disabled = true;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        mode: 'cors'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const rawData = await response.json();
+                    console.log('Raw API response:', rawData);
+                    
+                    // Transform the data to the expected format
+                    this.data = this.transformApiData(rawData);
+                    console.log('Transformed data:', this.data);
+                    
+                    this.createChart();
+                } catch (error) {
+                    console.error('Error loading metrics data:', error);
+                    alert(`Error loading metrics data: ${error.message}. Check console for details.`);
+                } finally {
+                    // Restore button
+                    const loadButton = document.getElementById('loadData');
+                    loadButton.textContent = originalText;
+                    loadButton.disabled = false;
+                }
+            }
+
+            async testApiConnection() {
+                const objectId = document.getElementById('objectId').value;
+                const fromTime = document.getElementById('fromTimestamp').value;
+                const toTime = document.getElementById('toTimestamp').value;
+                const downsample = document.getElementById('downsample').value;
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const authToken = document.getElementById('authToken').value;
+                
+                if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0 || !authToken) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
+                
+                try {
+                    console.log('Testing API connection to:', apiUrl);
+                    
+                    const testButton = document.getElementById('testApi');
+                    const originalText = testButton.textContent;
+                    testButton.textContent = 'Testing...';
+                    testButton.disabled = true;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        mode: 'cors'
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const rawData = await response.json();
+                    console.log('Raw API response:', rawData);
+                    
+                    // Display response info
+                    const responseInfo = {
+                        status: response.status,
+                        statusText: response.statusText,
+                        dataType: Array.isArray(rawData) ? 'Array' : typeof rawData,
+                        dataLength: Array.isArray(rawData) ? rawData.length : 'N/A',
+                        sampleData: Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : rawData
+                    };
+                    
+                    console.log('Response info:', responseInfo);
+                    alert(`API Test Successful!\nStatus: ${responseInfo.status}\nData Type: ${responseInfo.dataType}\nData Length: ${responseInfo.dataLength}\n\nCheck console for detailed response.`);
+                    
+                } catch (error) {
+                    console.error('API Test Error:', error);
+                    alert(`API Test Failed: ${error.message}\n\nThis might be due to CORS restrictions. Check console for details.`);
+                } finally {
+                    const testButton = document.getElementById('testApi');
+                    testButton.textContent = originalText;
+                    testButton.disabled = false;
+                }
+            }
+
+            transformApiData(rawData) {
+                const transformedData = [];
+                
+                if (!Array.isArray(rawData) || rawData.length === 0) {
+                    console.warn('No data received from API');
+                    return [];
+                }
+                
+                // Get all unique timestamps from all metrics
+                const allTimestamps = new Set();
+                rawData.forEach(metricData => {
+                    if (metricData.dps && Array.isArray(metricData.dps)) {
+                        metricData.dps.forEach(([timestamp]) => {
+                            allTimestamps.add(timestamp);
+                        });
+                    }
+                });
+                
+                // Sort timestamps
+                const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+                
+                // Create data points for each timestamp
+                sortedTimestamps.forEach(timestamp => {
+                    const dataPoint = {
+                        timestamp: timestamp,
+                        time: new Date(timestamp)
+                    };
+                    
+                    // Add values for each metric
+                    rawData.forEach(metricData => {
+                        const metricName = metricData.metric;
+                        const dpsEntry = metricData.dps.find(([ts]) => ts === timestamp);
+                        if (dpsEntry) {
+                            dataPoint[metricName] = dpsEntry[1];
+                        }
+                    });
+                    
+                    transformedData.push(dataPoint);
+                });
+                
+                // Display data summary
+                console.log(`Transformed ${transformedData.length} data points`);
+                if (transformedData.length > 0) {
+                    console.log('Sample data point:', transformedData[0]);
+                    console.log('Available metrics:', Object.keys(transformedData[0]).filter(key => key !== 'timestamp' && key !== 'time'));
+                }
+                
+                return transformedData;
+            }
+
+            createChart() {
+                const chartContainer = d3.select('#chart');
+                chartContainer.html('');
+
+                if (this.data.length === 0) {
+                    chartContainer.html('<div style="text-align: center; color: #666; padding: 50px;"><p>No data available</p></div>');
+                    return;
+                }
+
+                const svg = chartContainer
+                    .append('svg')
+                    .attr('width', this.width)
+                    .attr('height', this.height)
+                    .attr('viewBox', `0 0 ${this.width} ${this.height}`);
+
+                const chartGroup = svg.append('g')
+                    .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+
+                const chartWidth = this.width - this.margin.left - this.margin.right;
+                const chartHeight = this.height - this.margin.top - this.margin.bottom;
+
+                switch (this.currentChartType) {
+                    case 'line':
+                        this.createLineChart(chartGroup, chartWidth, chartHeight);
+                        break;
+                    case 'bar':
+                        this.createBarChart(chartGroup, chartWidth, chartHeight);
+                        break;
+                }
+
+                this.createLegend();
+            }
+
+            createLineChart(chartGroup, width, height) {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const xScale = d3.scaleTime()
+                    .domain(d3.extent(this.data, d => d.time))
+                    .range([0, width]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .range([height, 0]);
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale);
+                const yAxis = d3.axisLeft(yScale);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add grid
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Create line generator
+                const line = d3.line()
+                    .x(d => xScale(d.time))
+                    .y(d => yScale(d.value))
+                    .curve(d3.curveMonotoneX);
+
+                // Add lines for each metric
+                metrics.forEach((metric, index) => {
+                    const lineData = this.data.map(d => ({
+                        time: d.time,
+                        value: d[metric] || 0
+                    }));
+
+                    chartGroup.append('path')
+                        .datum(lineData)
+                        .attr('class', 'line-path')
+                        .attr('fill', 'none')
+                        .attr('stroke', this.color(index))
+                        .attr('stroke-width', this.strokeWidth)
+                        .attr('d', line);
+
+                    // Add data points
+                    chartGroup.selectAll(`.points-${index}`)
+                        .data(lineData)
+                        .enter()
+                        .append('circle')
+                        .attr('class', `data-point points-${index}`)
+                        .attr('cx', d => xScale(d.time))
+                        .attr('cy', d => yScale(d.value))
+                        .attr('r', this.pointSize)
+                        .attr('fill', this.color(index))
+                        .attr('stroke', 'white')
+                        .attr('stroke-width', 2)
+                        .on('mouseover', (event, d) => {
+                            this.showTooltip(event, d, metric);
+                        })
+                        .on('mouseout', () => {
+                            this.hideTooltip();
+                        });
+                });
+            }
+
+            createBarChart(chartGroup, width, height) {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const xScale = d3.scaleBand()
+                    .domain(this.data.map(d => d.time))
+                    .range([0, width])
+                    .padding(0.1);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .range([height, 0]);
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale);
+                const yAxis = d3.axisLeft(yScale);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add bars for each metric
+                metrics.forEach((metric, index) => {
+                    chartGroup.selectAll(`.bars-${index}`)
+                        .data(this.data)
+                        .enter()
+                        .append('rect')
+                        .attr('class', `bar bars-${index}`)
+                        .attr('x', d => xScale(d.time))
+                        .attr('y', d => yScale(d[metric] || 0))
+                        .attr('width', xScale.bandwidth())
+                        .attr('height', d => height - yScale(d[metric] || 0))
+                        .attr('fill', this.color(index))
+                        .attr('opacity', 0.8)
+                        .on('mouseover', (event, d) => {
+                            this.showTooltip(event, d, metric);
+                        })
+                        .on('mouseout', () => {
+                            this.hideTooltip();
+                        });
+                });
+            }
+
+            createLegend() {
+                const legend = d3.select('#legend');
+                legend.html('');
+
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                metrics.forEach((metric, index) => {
+                    const legendItem = legend.append('div')
+                        .attr('class', 'legend-item');
+
+                    legendItem.append('div')
+                        .attr('class', 'legend-color')
+                        .style('background-color', this.color(index));
+
+                    legendItem.append('span')
+                        .text(metric);
+                });
+            }
+
+            showTooltip(event, data, metric) {
+                const tooltip = d3.select('#tooltip');
+                const formatValue = d3.format(',.0f');
+                const formatTime = d3.timeFormat('%Y-%m-%d %H:%M:%S');
+                
+                tooltip.style('opacity', 1)
+                    .html(`
+                        <strong>${metric}</strong><br>
+                        Time: ${formatTime(data.time)}<br>
+                        Value: ${formatValue(data.value)}
+                    `)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 10) + 'px');
+            }
+
+            hideTooltip() {
+                d3.select('#tooltip').style('opacity', 0);
+            }
+        }
+
+        // Initialize the chart when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            new SaymonMetricsChart();
+        });
+    </script>
+</body>
+</html>

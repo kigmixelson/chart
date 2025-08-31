@@ -75,6 +75,18 @@ body {
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
 
+.btn-secondary {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border-color: transparent;
+    margin-left: 8px;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(72, 187, 120, 0.3);
+}
+
 .main-content {
     display: grid;
     grid-template-columns: 1fr 350px;
@@ -230,6 +242,21 @@ body {
 .api-url code {
     color: #2d3748;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.cors-notice {
+    margin-top: 12px;
+    padding: 12px;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #856404;
+}
+
+.cors-notice p {
+    margin: 0;
+    line-height: 1.4;
 }
 
 /* Chart specific styles */

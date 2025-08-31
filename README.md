@@ -1,174 +1,141 @@
-# 📊 Interactive Chart App
 
+# SAYMON Metrics Chart Application
 
-A modern, interactive SVG-based chart web application built with D3.js. Create beautiful, responsive charts with real-time data manipulation and customization options.
+A web-based chart application for visualizing metrics data from the SAYMON monitoring system.
 
-## ✨ Features
+## Features
 
-- **Multiple Chart Types**: Line, Bar, Scatter, Area, and Pie charts
-- **Interactive Elements**: Hover tooltips, clickable data points, and responsive design
-- **Real-time Data Manipulation**: Add data points, randomize data, and configure data ranges
-- **Customizable Styling**: Color schemes, stroke widths, and point sizes
-- **Modern UI**: Beautiful gradient design with glassmorphism effects
-- **Responsive Design**: Works perfectly on desktop and mobile devices
+- **Real-time Data Fetching**: Connects to the SAYMON API to fetch actual metrics data
+- **Interactive Charts**: Line and bar chart visualizations using D3.js
+- **Configurable Parameters**: Customize object ID, time range, metrics, and downsample settings
+- **Authentication**: Secure API access using authentication tokens
+- **Responsive Design**: Works on desktop and mobile devices
 
-## 🚀 Quick Start
+## Quick Start
 
-### Prerequisites
-- Node.js (version 14 or higher)
-- npm or yarn
-
-### Installation
-
-1. **Clone or download the project**
-   ```bash
-   # If you have the files locally, navigate to the project directory
-   cd /path/to/chart-app
-   ```
-
-2. **Install dependencies**
+1. **Install Dependencies**:
    ```bash
    npm install
    ```
 
-3. **Start the development server**
+2. **Start Development Server**:
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:5173` to see the application
+3. **Open in Browser**:
+   Navigate to `http://localhost:5173`
 
-## 📋 Usage
+## Configuration
 
-### Chart Controls
+### Required Parameters
 
-- **Chart Type Selector**: Switch between different chart types (Line, Bar, Scatter, Area, Pie)
-- **Add Data Point**: Dynamically add new data points to the chart
-- **Randomize Data**: Generate new random data for the current chart
+- **Object ID**: The SAYMON object identifier (e.g., `67cb1f1f120ab073c5adb8a2`)
+- **Authentication Token**: Your SAYMON API authentication token
+- **Time Range**: From and to timestamps in milliseconds
+- **Metrics**: Comma-separated list of metrics to fetch (e.g., `ifHCInOctets,ifHCOutOctets`)
+- **Downsample**: Data aggregation interval (e.g., `5m-avg`, `1h-avg`)
 
-### Data Configuration
+### Example Configuration
 
-- **Number of Points**: Set how many data points to generate (1-50)
-- **Min/Max Values**: Configure the range for random data generation
-- **Update Chart**: Apply new data configuration
-
-### Styling Options
-
-- **Color Scheme**: Choose from different D3 color palettes
-- **Stroke Width**: Adjust line thickness (1-10)
-- **Point Size**: Modify scatter plot point sizes (2-20)
-
-### Interactive Features
-
-- **Hover Tooltips**: See detailed information when hovering over data points
-- **Responsive Charts**: Charts automatically resize and adapt to different screen sizes
-- **Smooth Animations**: All interactions include smooth transitions and animations
-
-## 🛠️ Technical Details
-
-### Built With
-- **D3.js**: Powerful data visualization library for SVG-based charts
-- **Vite**: Fast build tool and development server
-- **Modern CSS**: CSS Grid, Flexbox, and advanced styling techniques
-- **ES6 Modules**: Modern JavaScript with import/export syntax
-
-### Chart Types
-
-1. **Line Chart**: Smooth curved lines connecting data points
-2. **Bar Chart**: Vertical bars with customizable colors
-3. **Scatter Plot**: Individual data points with hover interactions
-4. **Area Chart**: Filled area under the line with transparency
-5. **Pie Chart**: Circular chart with labels and hover effects
-
-### File Structure
 ```
-chart-app/
+Object ID: 67cb1f1f120ab073c5adb8a2
+Auth Token: 285c4fd9-6335-41eb-b516-189eb7482d19
+From: 1756497678991
+To: 1756592718991
+Metrics: ifHCInOctets,ifHCOutOctets
+Downsample: 5m-avg
+```
+
+## API Endpoint
+
+The application connects to the SAYMON API endpoint:
+```
+https://bccdemo.cpult.ru/node/api/objects/{objectId}/history
+```
+
+### Query Parameters
+
+- `from`: Start timestamp (milliseconds)
+- `to`: End timestamp (milliseconds)
+- `downsample`: Aggregation interval
+- `metrics[]`: Array of metric names
+- `auth-token`: Authentication token
+
+## Usage
+
+1. **Test API Connection**: Click "Test API Connection" to verify your settings
+2. **Load Data**: Click "Load Metrics Data" to fetch and display the chart
+3. **Switch Chart Types**: Use the dropdown to switch between line and bar charts
+4. **Adjust Time Range**: Use the time range selector for quick time period changes
+
+## Troubleshooting
+
+### CORS Issues
+
+If you encounter CORS errors, you may need to:
+- Use a CORS proxy
+- Run the application from a server that allows cross-origin requests
+- Contact your SAYMON administrator to enable CORS for your domain
+
+### Authentication Errors
+
+- Verify your authentication token is correct
+- Ensure the token has permission to access the specified object
+- Check if the token has expired
+
+### Data Issues
+
+- Verify the object ID exists in your SAYMON system
+- Check that the specified metrics are available for the object
+- Ensure the time range contains data
+
+## Development
+
+### Project Structure
+
+```
+chart/
 ├── index.html          # Main HTML file
-├── style.css           # Modern CSS styles
-├── main.js             # D3.js chart implementation
-├── package.json        # Project dependencies
-└── README.md           # This file
+├── main.js            # Chart application logic
+├── style.css          # Main stylesheet
+├── package.json       # Dependencies and scripts
+└── vite.config.js     # Vite configuration
 ```
 
-## 🎨 Customization
+### Key Dependencies
 
-### Adding New Chart Types
-To add a new chart type:
+- **D3.js**: Chart visualization library
+- **Vite**: Build tool and development server
 
-1. Add the option to the HTML select element
-2. Create a new method in the `InteractiveChart` class (e.g., `createNewChartType`)
-3. Add the case to the switch statement in `createChart()`
+### Building for Production
 
-### Styling Customization
-The CSS uses CSS custom properties and modern features:
-- Glassmorphism effects with `backdrop-filter`
-- Smooth animations with `transition`
-- Responsive design with CSS Grid and Flexbox
-
-### Data Format
-The application expects data in this format:
-```javascript
-{
-  x: number,      // X-axis value
-  y: number,      // Y-axis value
-  label: string   // Display label
-}
-```
-
-## 🌟 Advanced Features
-
-### Responsive Design
-- Charts automatically resize based on container size
-- Mobile-friendly interface with touch interactions
-- Adaptive layout for different screen sizes
-
-### Performance Optimizations
-- Efficient D3.js rendering with proper data binding
-- Smooth animations without performance impact
-- Optimized SVG generation
-
-### Accessibility
-- Keyboard navigation support
-- Screen reader friendly tooltips
-- High contrast color schemes
-
-## 🔧 Development
-
-### Build for Production
 ```bash
 npm run build
 ```
 
-### Preview Production Build
-```bash
-npm run preview
+The built files will be in the `dist/` directory.
+
+## API Response Format
+
+The SAYMON API returns data in the following format:
+
+```json
+[
+  {
+    "metric": "ifHCInOctets",
+    "tags": {"entity": "obj67cb1f1f120ab073c5adb8a2"},
+    "aggregateTags": [],
+    "dps": [
+      [1756497900000, 3.309192823E9],
+      [1756498200000, 3.309554845E9]
+    ]
+  }
+]
 ```
 
-### Development Tips
-- Use browser dev tools to inspect SVG elements
-- Modify CSS variables for quick styling changes
-- Check console for any D3.js warnings or errors
+The application transforms this data into a format suitable for D3.js visualization.
 
-## 📱 Browser Support
+## License
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## 🤝 Contributing
-
-Feel free to enhance the application by:
-- Adding new chart types
-- Improving the UI/UX
-- Adding more interactive features
-- Optimizing performance
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
----
-
-**Enjoy creating beautiful, interactive charts! 🎉**
+MIT License - see LICENSE file for details.

@@ -83,6 +83,11 @@
                         </div>
                         
                         <div class="input-group">
+                            <label for="authToken">Authentication Token:</label>
+                            <input type="text" id="authToken" value="285c4fd9-6335-41eb-b516-189eb7482d19" placeholder="Enter auth token">
+                        </div>
+                        
+                        <div class="input-group">
                             <label for="chartType">Chart Type:</label>
                             <select id="chartType">
                                 <option value="line">Line Chart</option>
@@ -91,13 +96,18 @@
                         </div>
                     </div>
                     <button id="loadData" class="btn btn-primary">Load Metrics Data</button>
+                    <button id="testApi" class="btn btn-secondary">Test API Connection</button>
                 </div>
 
                 <div class="api-info">
                     <h3>API Endpoint</h3>
                     <div class="api-url" id="apiUrl">
-                        <code>/node/api/objects/67cb1f1f120ab073c5adb8a2/history?from=1756497678991&to=1756592718991&downsample=5m-avg&metrics%5B%5D=ifHCInOctets&metrics%5B%5D=ifHCOutOctets</code>
+                        <code>https://bccdemo.cpult.ru/node/api/objects/67cb1f1f120ab073c5adb8a2/history?from=1756497678991&to=1756592718991&downsample=5m-avg&metrics%5B%5D=ifHCInOctets&metrics%5B%5D=ifHCOutOctets&auth-token=285c4fd9-6335-41eb-b516-189eb7482d19</code>
                     </div>
+                    <div class="cors-notice">
+                        <p><strong>Note:</strong> If you encounter CORS errors, you may need to use a CORS proxy or run this application from a server that allows cross-origin requests.</p>
+                    </div>
+                </div>
                 </div>
             </div>
         </main>
