@@ -67,26 +67,35 @@
         }
         .legend {
             position: absolute;
-            top: 10px;
+            bottom: 10px;
+            left: 10px;
             right: 10px;
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
             background: rgba(255, 255, 255, 0.9);
-            padding: 8px;
+            padding: 6px 10px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
+            flex-wrap: wrap;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             color: #4a5568;
+            white-space: nowrap;
         }
         .legend-color {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 2px;
+        }
+        .chart-title-bottom {
+            font-weight: bold;
+            color: #2d3748;
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -368,19 +377,7 @@
                     .domain([0, maxValue])
                     .range([height, 0]);
 
-                // Add chart title to show current data type and period (positioned inside chart body)
-                const titleText = this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart';
-                const periodText = this.config.period ? ` (${this.config.period})` : '';
-                
-                chartGroup.append('text')
-                    .attr('x', 10)
-                    .attr('y', 20)
-                    .attr('text-anchor', 'start')
-                    .attr('class', 'chart-title')
-                    .style('font-size', '11px')
-                    .style('font-weight', 'bold')
-                    .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
-                    .text(titleText + periodText);
+                // Chart title will be shown in the bottom legend instead
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -474,19 +471,7 @@
                     })))])
                     .range([height, 0]);
 
-                // Add chart title to show current data type and period (positioned inside chart body)
-                const titleText = this.config.dataType === 'diff' ? '📊 Rate Chart' : '📈 Counter Chart';
-                const periodText = this.config.period ? ` (${this.config.period})` : '';
-                
-                chartGroup.append('text')
-                    .attr('x', 10)
-                    .attr('y', 20)
-                    .attr('text-anchor', 'start')
-                    .attr('class', 'chart-title')
-                    .style('font-size', '11px')
-                    .style('font-weight', 'bold')
-                    .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
-                    .text(titleText + periodText);
+                // Chart title will be shown in the bottom legend instead
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -536,15 +521,15 @@
 
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 
-                // Add period info if available
-                if (this.config.period) {
-                    legend.append('div')
-                        .attr('class', 'legend-item')
-                        .style('font-weight', 'bold')
-                        .style('margin-bottom', '4px')
-                        .text(`Period: ${this.config.period} (${this.config.downsample})`);
-                }
+                // Add chart title first
+                const titleText = this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart';
+                const periodText = this.config.period ? ` (${this.config.period})` : '';
                 
+                legend.append('div')
+                    .attr('class', 'legend-item chart-title-bottom')
+                    .text(titleText + periodText);
+                
+                // Add metrics
                 metrics.forEach((metric, index) => {
                     const legendItem = legend.append('div')
                         .attr('class', 'legend-item');
