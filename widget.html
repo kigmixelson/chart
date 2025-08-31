@@ -264,13 +264,16 @@
                     .domain(d3.extent(this.data, d => d.time))
                     .range([0, width]);
 
+                const maxValue = d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)));
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .domain([0, maxValue])
                     .range([height, 0]);
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
-                const yAxis = d3.axisLeft(yScale);
+                const yAxis = d3.axisLeft(yScale)
+                    .tickFormat(d3.format(',.0f')) // Format numbers with commas
+                    .ticks(5); // Limit to 5 ticks for better readability
 
                 chartGroup.append('g')
                     .attr('class', 'axis')
@@ -347,7 +350,8 @@
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
-                const yAxis = d3.axisLeft(yScale);
+                const yAxis = d3.axisLeft(yScale)
+                    .tickFormat(d3.format(',.0f')); // Format numbers with commas
 
                 chartGroup.append('g')
                     .attr('class', 'axis')
@@ -404,11 +408,21 @@
                 const formatValue = d3.format(',.0f');
                 const formatTime = d3.timeFormat('%Y-%m-%d %H:%M:%S');
                 
+                // Format large numbers with appropriate units
+                let displayValue = formatValue(data.value);
+                if (data.value >= 1e9) {
+                    displayValue = d3.format('.2f')(data.value / 1e9) + 'B';
+                } else if (data.value >= 1e6) {
+                    displayValue = d3.format('.2f')(data.value / 1e6) + 'M';
+                } else if (data.value >= 1e3) {
+                    displayValue = d3.format('.2f')(data.value / 1e3) + 'K';
+                }
+                
                 tooltip.style('opacity', 1)
                     .html(`
                         <strong>${metric}</strong><br>
                         Time: ${formatTime(data.time)}<br>
-                        Value: ${formatValue(data.value)}
+                        Value: ${displayValue} (${formatValue(data.value)})
                     `)
                     .style('left', (event.pageX + 10) + 'px')
                     .style('top', (event.pageY - 10) + 'px');
