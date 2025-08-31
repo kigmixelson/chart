@@ -415,7 +415,7 @@
                 const line = d3.line()
                     .x(d => xScale(d.time))
                     .y(d => yScale(d.value))
-                    .curve(d3.curveMonotoneX);
+                    .curve(d3.curveLinear);
 
                 // Add lines for each metric
                 metrics.forEach((metric, index) => {

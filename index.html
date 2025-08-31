@@ -425,7 +425,7 @@
                     const line = d3.line()
                         .x(d => xScale(d.time))
                         .y(d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
-                        .curve(d3.curveMonotoneX);
+                        .curve(d3.curveLinear);
 
                     // Add line path with different stroke width for rate vs counter
                     chartGroup.append('path')
