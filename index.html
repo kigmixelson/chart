@@ -220,15 +220,24 @@
                 this.data[0][`${metric}_diff`] = 0;
             });
             
-            // Remove first data point if any metric has negative difference
-            const hasNegativeFirstDiff = metrics.some(metric => {
-                const firstDiff = this.data[0][`${metric}_diff`];
-                return firstDiff < 0;
+            // Remove data points with negative differences
+            const originalLength = this.data.length;
+            this.data = this.data.filter((point, index) => {
+                const hasNegativeDiff = metrics.some(metric => {
+                    const diff = point[`${metric}_diff`];
+                    return diff < 0;
+                });
+                
+                if (hasNegativeDiff) {
+                    console.log(`Removing data point ${index} due to negative difference`);
+                }
+                
+                return !hasNegativeDiff;
             });
             
-            if (hasNegativeFirstDiff) {
-                console.log('Removing first data point due to negative difference');
-                this.data = this.data.slice(1);
+            const removedCount = originalLength - this.data.length;
+            if (removedCount > 0) {
+                console.log(`Removed ${removedCount} data points with negative differences`);
             }
             
             console.log('Calculated differences for metrics:', metrics);
