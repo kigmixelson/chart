@@ -110,11 +110,23 @@ chart/
 
 ### Building for Production
 
+#### Option 1: Using Vite (requires Node.js)
 ```bash
+npm install
 npm run build
 ```
 
-The built files will be in the `dist/` directory.
+#### Option 2: Simple Build (no Node.js required)
+```bash
+./build.sh
+```
+
+Both methods will create a `dist/` directory with all the necessary files:
+- `index.html` - Main application
+- `widget.html` - Embeddable widget
+- `standalone.html` - Standalone version
+- All CSS and JavaScript files
+- Documentation files
 
 ## API Response Format
 

@@ -122,7 +122,7 @@
                     toTimestamp: urlParams.get('to') || '1756592718991',
                     downsample: urlParams.get('downsample') || '5m-avg',
                     metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
-                    authToken: urlParams.get('authToken') || '285c4fd9-6335-41eb-b516-189eb7482d19',
+                    authToken: urlParams.get('authToken'), // Optional - no default
                     chartType: urlParams.get('chartType') || 'line',
                     width: parseInt(urlParams.get('width')) || window.innerWidth,
                     height: parseInt(urlParams.get('height')) || window.innerHeight
@@ -142,7 +142,14 @@
                 try {
                     const metrics = this.config.metrics.split(',').map(m => m.trim());
                     const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                    const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${this.config.objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}&auth-token=${this.config.authToken}`;
+                    
+                    // Build API URL with optional auth token
+                    let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${this.config.objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
+                    
+                    // Add auth token if provided
+                    if (this.config.authToken) {
+                        apiUrl += `&auth-token=${this.config.authToken}`;
+                    }
                     
                     console.log('Loading data from:', apiUrl);
                     

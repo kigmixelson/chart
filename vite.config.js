@@ -5,6 +5,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html',
+        widget: './widget.html',
+        standalone: './standalone.html',
         build: './build.js'
       }
     }

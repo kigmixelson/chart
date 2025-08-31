@@ -7,7 +7,7 @@ A lightweight, embeddable widget for displaying SAYMON metrics charts. The widge
 Simply open `widget.html` with URL parameters to configure the chart:
 
 ```
-widget.html?objectId=67cb1f1f120ab073c5adb8a2&from=1756497678991&to=1756592718991&metrics=ifHCInOctets,ifHCOutOctets&authToken=285c4fd9-6335-41eb-b516-189eb7482d19
+widget.html?objectId=67cb1f1f120ab073c5adb8a2&from=1756497678991&to=1756592718991&metrics=ifHCInOctets,ifHCOutOctets
 ```
 
 ## URL Parameters
@@ -18,7 +18,7 @@ widget.html?objectId=67cb1f1f120ab073c5adb8a2&from=1756497678991&to=175659271899
 | `from` | No | `1756497678991` | Start timestamp (milliseconds) |
 | `to` | No | `1756592718991` | End timestamp (milliseconds) |
 | `metrics` | No | `ifHCInOctets,ifHCOutOctets` | Comma-separated list of metrics |
-| `authToken` | No | `285c4fd9-6335-41eb-b516-189eb7482d19` | Authentication token |
+| `authToken` | No | None | Authentication token (optional when embedded in authorized page) |
 | `downsample` | No | `5m-avg` | Data aggregation interval |
 | `chartType` | No | `line` | Chart type (`line` or `bar`) |
 | `width` | No | `window.innerWidth` | Widget width in pixels |
@@ -102,7 +102,7 @@ https://bccdemo.cpult.ru/node/api/objects/{objectId}/history
 - `to`: End timestamp  
 - `downsample`: Aggregation interval
 - `metrics[]`: Array of metric names
-- `auth-token`: Authentication token
+- `auth-token`: Authentication token (if provided)
 
 ## Error Handling
 
@@ -118,6 +118,21 @@ The widget handles various error scenarios:
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
+
+## Authentication Scenarios
+
+### Scenario 1: Standalone Widget with Token
+When using the widget independently, provide the auth token:
+```
+widget.html?objectId=67cb1f1f120ab073c5adb8a2&authToken=your-token-here
+```
+
+### Scenario 2: Embedded in Authorized Page
+When embedding in a page that already handles authentication, omit the auth token:
+```
+widget.html?objectId=67cb1f1f120ab073c5adb8a2
+```
+The parent application should handle authentication (cookies, headers, etc.)
 
 ## CORS Considerations
 
@@ -141,7 +156,8 @@ The widget uses CSS custom properties that can be overridden:
 
 ## Security Notes
 
-- The authentication token is visible in the URL
+- The authentication token is optional and only sent if provided in URL
+- When embedded in an authorized page, authentication can be handled by the parent application
 - Consider using server-side proxy for sensitive tokens
 - Validate all URL parameters on the server side
 - Use HTTPS for production deployments

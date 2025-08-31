@@ -1,12 +1,15 @@
 {
-  "name": "interactive-chart-app",
+  "name": "saymon-metrics-chart",
   "version": "1.0.0",
-  "description": "Interactive SVG-based chart web application",
+  "description": "SAYMON metrics visualization with interactive charts and embeddable widgets",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:simple": "./build.sh",
+    "preview": "vite preview",
+    "build:widget": "vite build --outDir dist-widget",
+    "serve": "vite preview --port 4173"
   },
   "dependencies": {
     "d3": "^7.8.5"
@@ -14,7 +17,15 @@
   "devDependencies": {
     "vite": "^5.0.0"
   },
-  "keywords": ["chart", "svg", "interactive", "d3", "visualization"],
+  "keywords": ["saymon", "metrics", "chart", "widget", "d3", "visualization", "monitoring"],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "dist/",
+    "widget.html",
+    "standalone.html",
+    "index.html",
+    "README.md",
+    "WIDGET_README.md"
+  ]
 }
