@@ -379,11 +379,17 @@
                     .domain(d3.extent(chartData, d => d.time))
                     .range([0, width]);
 
-                // Use appropriate values for Y scale based on data type
+                // Use appropriate values for Y scale based on data type with 10% padding
+                const allValues = chartData.flatMap(d => 
+                    metrics.map(m => dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0))
+                );
+                const minValue = d3.min(allValues);
+                const maxValue = d3.max(allValues);
+                const dataRange = maxValue - minValue;
+                const padding = dataRange * 0.1; // 10% of data variation
+                
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(chartData, d => Math.max(...metrics.map(m => {
-                        return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
-                    })))])
+                    .domain([minValue - padding, maxValue + padding])
                     .range([height, 0]);
 
                 // Add chart title to show current data type
@@ -465,11 +471,17 @@
                     .range([0, width])
                     .padding(0.1);
 
-                // Use appropriate values for Y scale based on data type
+                // Use appropriate values for Y scale based on data type with 10% padding
+                const allValues = chartData.flatMap(d => 
+                    metrics.map(m => dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0))
+                );
+                const minValue = d3.min(allValues);
+                const maxValue = d3.max(allValues);
+                const dataRange = maxValue - minValue;
+                const padding = dataRange * 0.1; // 10% of data variation
+                
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(chartData, d => Math.max(...metrics.map(m => {
-                        return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
-                    })))])
+                    .domain([minValue - padding, maxValue + padding])
                     .range([height, 0]);
 
                 // Add chart title to show current data type
