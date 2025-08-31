@@ -124,6 +124,7 @@
                     metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
                     authToken: urlParams.get('authToken'), // Optional - no default
                     chartType: urlParams.get('chartType') || 'line',
+                    dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
                     width: parseInt(urlParams.get('width')) || window.innerWidth,
                     height: parseInt(urlParams.get('height')) || window.innerHeight
                 };
@@ -171,6 +172,11 @@
                     
                     this.data = this.transformApiData(rawData);
                     console.log('Transformed data:', this.data);
+                    
+                    // Calculate differences if data type is 'diff'
+                    if (this.config.dataType === 'diff') {
+                        this.calculateDifferences();
+                    }
                     
                     this.createChart();
                 } catch (error) {
@@ -222,6 +228,27 @@
                 return transformedData;
             }
 
+            calculateDifferences() {
+                const metrics = this.config.metrics.split(',').map(m => m.trim());
+                
+                // Calculate differences between neighboring values for each metric
+                metrics.forEach(metric => {
+                    for (let i = 1; i < this.data.length; i++) {
+                        const currentValue = this.data[i][metric] || 0;
+                        const previousValue = this.data[i-1][metric] || 0;
+                        const difference = currentValue - previousValue;
+                        
+                        // Store the difference in a new field
+                        this.data[i][`${metric}_diff`] = difference;
+                    }
+                    
+                    // For the first data point, set difference to 0
+                    this.data[0][`${metric}_diff`] = 0;
+                });
+                
+                console.log('Calculated differences for metrics:', metrics);
+            }
+
             showError(message) {
                 const chartContainer = d3.select('#chart');
                 chartContainer.html(`<div class="error">${message}</div>`);
@@ -264,10 +291,24 @@
                     .domain(d3.extent(this.data, d => d.time))
                     .range([0, width]);
 
-                const maxValue = d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)));
+                // Use appropriate values for Y scale based on data type
+                const maxValue = d3.max(this.data, d => Math.max(...metrics.map(m => {
+                    return this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
+                })));
                 const yScale = d3.scaleLinear()
                     .domain([0, maxValue])
                     .range([height, 0]);
+
+                // Add chart title to show current data type
+                chartGroup.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', -10)
+                    .attr('text-anchor', 'middle')
+                    .attr('class', 'chart-title')
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
+                    .text(this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart');
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -309,7 +350,9 @@
                 metrics.forEach((metric, index) => {
                     const lineData = this.data.map(d => ({
                         time: d.time,
-                        value: d[metric] || 0
+                        value: this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0),
+                        counterValue: d[metric] || 0,
+                        rateValue: d[`${metric}_diff`] || 0
                     }));
 
                     chartGroup.append('path')
@@ -317,7 +360,7 @@
                         .attr('class', 'line-path')
                         .attr('fill', 'none')
                         .attr('stroke', this.color(index))
-                        .attr('stroke-width', this.strokeWidth)
+                        .attr('stroke-width', this.config.dataType === 'diff' ? this.strokeWidth + 1 : this.strokeWidth)
                         .attr('d', line);
 
                     // Add data points
@@ -328,7 +371,7 @@
                         .attr('class', `data-point points-${index}`)
                         .attr('cx', d => xScale(d.time))
                         .attr('cy', d => yScale(d.value))
-                        .attr('r', this.pointSize)
+                        .attr('r', this.config.dataType === 'diff' ? this.pointSize + 1 : this.pointSize)
                         .attr('fill', this.color(index))
                         .attr('stroke', 'white')
                         .attr('stroke-width', 1)
@@ -349,9 +392,23 @@
                     .range([0, width])
                     .padding(0.1);
 
+                // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                        return this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
+                    })))])
                     .range([height, 0]);
+
+                // Add chart title to show current data type
+                chartGroup.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', -10)
+                    .attr('text-anchor', 'middle')
+                    .attr('class', 'chart-title')
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
+                    .text(this.config.dataType === 'diff' ? '📊 Rate Chart' : '📈 Counter Chart');
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -381,11 +438,11 @@
                         .append('rect')
                         .attr('class', `bar bars-${index}`)
                         .attr('x', d => xScale(d.time))
-                        .attr('y', d => yScale(d[metric] || 0))
+                        .attr('y', d => yScale(this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('width', xScale.bandwidth())
-                        .attr('height', d => height - yScale(d[metric] || 0))
+                        .attr('height', d => height - yScale(this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('fill', this.color(index))
-                        .attr('opacity', 0.8)
+                        .attr('opacity', this.config.dataType === 'diff' ? 0.9 : 0.8)
                         .on('mouseover', (event, d) => {
                             this.showTooltip(event, d, metric);
                         })
@@ -409,8 +466,9 @@
                         .attr('class', 'legend-color')
                         .style('background-color', this.color(index));
 
+                    const label = this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`;
                     legendItem.append('span')
-                        .text(metric);
+                        .text(label);
                 });
             }
 
@@ -419,22 +477,39 @@
                 const formatValue = d3.format(',.0f');
                 const formatTime = d3.timeFormat('%Y-%m-%d %H:%M:%S');
                 
+                // Get both counter and rate values
+                const counterValue = data.counterValue || data.value || 0;
+                const rateValue = data.rateValue || data.value || 0;
+                
                 // Format large numbers with appropriate units (1024-based for traffic data)
-                let displayValue = formatValue(data.value);
-                if (data.value >= Math.pow(1024, 3)) {
-                    displayValue = d3.format('.2f')(data.value / Math.pow(1024, 3)) + 'G';
-                } else if (data.value >= Math.pow(1024, 2)) {
-                    displayValue = d3.format('.2f')(data.value / Math.pow(1024, 2)) + 'M';
-                } else if (data.value >= 1024) {
-                    displayValue = d3.format('.2f')(data.value / 1024) + 'K';
+                let displayCounter = formatValue(counterValue);
+                if (counterValue >= Math.pow(1024, 3)) {
+                    displayCounter = d3.format('.2f')(counterValue / Math.pow(1024, 3)) + 'G';
+                } else if (counterValue >= Math.pow(1024, 2)) {
+                    displayCounter = d3.format('.2f')(counterValue / Math.pow(1024, 2)) + 'M';
+                } else if (counterValue >= 1024) {
+                    displayCounter = d3.format('.2f')(counterValue / 1024) + 'K';
+                }
+                
+                let displayRate = formatValue(rateValue);
+                if (rateValue >= Math.pow(1024, 3)) {
+                    displayRate = d3.format('.2f')(rateValue / Math.pow(1024, 3)) + 'G';
+                } else if (rateValue >= Math.pow(1024, 2)) {
+                    displayRate = d3.format('.2f')(rateValue / Math.pow(1024, 2)) + 'M';
+                } else if (rateValue >= 1024) {
+                    displayRate = d3.format('.2f')(rateValue / 1024) + 'K';
+                }
+                
+                let tooltipContent = `<strong>${metric}</strong><br>Time: ${formatTime(data.time)}<br>`;
+                
+                if (this.config.dataType === 'diff') {
+                    tooltipContent += `Rate: ${displayRate} (${formatValue(rateValue)})<br>Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                } else {
+                    tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
                 }
                 
                 tooltip.style('opacity', 1)
-                    .html(`
-                        <strong>${metric}</strong><br>
-                        Time: ${formatTime(data.time)}<br>
-                        Value: ${displayValue} (${formatValue(data.value)})
-                    `)
+                    .html(tooltipContent)
                     .style('left', (event.pageX + 10) + 'px')
                     .style('top', (event.pageY - 10) + 'px');
             }
