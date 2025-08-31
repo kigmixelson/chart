@@ -416,8 +416,15 @@
 
                 // Chart title will be shown in the bottom legend instead
 
+                // Calculate number of ticks based on chart width
+                const xTicks = Math.max(2, Math.min(8, Math.floor(width / 80))); // 2-8 ticks based on width
+                const yTicks = Math.max(3, Math.min(6, Math.floor(height / 60))); // 3-6 ticks based on height
+
                 // Add axes
-                const xAxis = d3.axisBottom(xScale);
+                const xAxis = d3.axisBottom(xScale)
+                    .ticks(xTicks)
+                    .tickFormat(d3.timeFormat(width < 400 ? '%H:%M' : '%m/%d %H:%M')); // Shorter format for small screens
+                
                 const yAxis = d3.axisLeft(yScale)
                     .tickFormat(d => {
                         if (d >= Math.pow(1024, 3)) return d3.format('.1f')(d / Math.pow(1024, 3)) + 'G';
@@ -425,7 +432,7 @@
                         if (d >= 1024) return d3.format('.1f')(d / 1024) + 'K';
                         return d3.format(',.0f')(d);
                     })
-                    .ticks(5); // Limit to 5 ticks for better readability
+                    .ticks(yTicks);
 
                 chartGroup.append('g')
                     .attr('class', 'axis')
@@ -510,8 +517,14 @@
 
                 // Chart title will be shown in the bottom legend instead
 
+                // Calculate number of ticks based on chart width
+                const xTicks = Math.max(2, Math.min(8, Math.floor(width / 80))); // 2-8 ticks based on width
+                const yTicks = Math.max(3, Math.min(6, Math.floor(height / 60))); // 3-6 ticks based on height
+
                 // Add axes
-                const xAxis = d3.axisBottom(xScale);
+                const xAxis = d3.axisBottom(xScale)
+                    .ticks(xTicks);
+                
                 const yAxis = d3.axisLeft(yScale)
                     .tickFormat(d => {
                         if (d >= Math.pow(1024, 3)) return d3.format('.1f')(d / Math.pow(1024, 3)) + 'G';
@@ -519,7 +532,7 @@
                         if (d >= 1024) return d3.format('.1f')(d / 1024) + 'K';
                         return d3.format(',.0f')(d);
                     })
-                    .ticks(5); // Limit to 5 ticks for better readability
+                    .ticks(yTicks);
 
                 chartGroup.append('g')
                     .attr('class', 'axis')
