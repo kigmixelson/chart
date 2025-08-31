@@ -94,6 +94,14 @@
                                 <option value="bar">Bar Chart</option>
                             </select>
                         </div>
+                        
+                        <div class="input-group">
+                            <label for="dataType">Data Type:</label>
+                            <select id="dataType">
+                                <option value="diff">Rate (Difference)</option>
+                                <option value="raw">Raw Counter</option>
+                            </select>
+                        </div>
                     </div>
                     <button id="loadData" class="btn btn-primary">Load Metrics</button>
                     <button id="testApi" class="btn btn-secondary">Test API Conn</button>
@@ -135,6 +143,7 @@
                 this.setupEventListeners();
                 this.updateApiUrl();
                 this.generateSampleData();
+                this.calculateDifferences();
                 this.createChart();
             }
 
@@ -147,6 +156,12 @@
                 
                 const timeStep = (toTime - fromTime) / 20; // 20 data points
                 
+                // Generate counter data (continuously increasing)
+                let currentValues = {};
+                metrics.forEach((metric, index) => {
+                    currentValues[metric] = Math.random() * 1000 + 100; // Starting values
+                });
+                
                 for (let i = 0; i < 20; i++) {
                     const timestamp = fromTime + (i * timeStep);
                     const dataPoint = {
@@ -155,11 +170,34 @@
                     };
                     
                     metrics.forEach((metric, index) => {
-                        dataPoint[metric] = Math.random() * 1000 + 100; // Random values
+                        // Increment counter values (simulating network traffic counters)
+                        currentValues[metric] += Math.random() * 50 + 10;
+                        dataPoint[metric] = currentValues[metric];
                     });
                     
                     this.data.push(dataPoint);
                 }
+            }
+
+            calculateDifferences() {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                // Calculate differences between neighboring values for each metric
+                metrics.forEach(metric => {
+                    for (let i = 1; i < this.data.length; i++) {
+                        const currentValue = this.data[i][metric] || 0;
+                        const previousValue = this.data[i-1][metric] || 0;
+                        const difference = currentValue - previousValue;
+                        
+                        // Store the difference in a new field
+                        this.data[i][`${metric}_diff`] = difference;
+                    }
+                    
+                    // For the first data point, set difference to 0 or null
+                    this.data[0][`${metric}_diff`] = 0;
+                });
+                
+                console.log('Calculated differences for metrics:', metrics);
             }
 
             setupEventListeners() {
@@ -171,6 +209,11 @@
                 // Chart type selector
                 d3.select('#chartType').on('change', (event) => {
                     this.currentChartType = event.target.value;
+                    this.createChart();
+                });
+
+                // Data type selector
+                d3.select('#dataType').on('change', (event) => {
                     this.createChart();
                 });
 
@@ -249,6 +292,7 @@
                     // this.data = await response.json();
                     
                     this.generateSampleData();
+                    this.calculateDifferences();
                     this.createChart();
                 } catch (error) {
                     console.error('Error loading metrics data:', error);
@@ -286,13 +330,17 @@
 
             createLineChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const dataType = document.getElementById('dataType').value;
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(this.data, d => d.time))
                     .range([0, width]);
 
+                // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                        return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
+                    })))])
                     .range([height, 0]);
 
                 // Add axes
@@ -318,11 +366,11 @@
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
-                // Create lines for each metric
+                // Create lines for each metric using appropriate values
                 metrics.forEach((metric, index) => {
                     const line = d3.line()
                         .x(d => xScale(d.time))
-                        .y(d => yScale(d[metric] || 0))
+                        .y(d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .curve(d3.curveMonotoneX);
 
                     // Add line path
@@ -341,7 +389,7 @@
                         .append('circle')
                         .attr('class', `data-point data-point-${index}`)
                         .attr('cx', d => xScale(d.time))
-                        .attr('cy', d => yScale(d[metric] || 0))
+                        .attr('cy', d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('r', this.pointSize)
                         .attr('fill', this.color(index))
                         .attr('stroke', 'white')
@@ -353,14 +401,18 @@
 
             createBarChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const dataType = document.getElementById('dataType').value;
                 
                 const xScale = d3.scaleBand()
                     .domain(this.data.map((d, i) => i))
                     .range([0, width])
                     .padding(0.1);
 
+                // Use appropriate values for Y scale based on data type
                 const yScale = d3.scaleLinear()
-                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => {
+                        return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
+                    })))])
                     .range([height, 0]);
 
                 // Add axes
@@ -381,7 +433,7 @@
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
-                // Add bars for each metric
+                // Add bars for each metric using appropriate values
                 metrics.forEach((metric, metricIndex) => {
                     chartGroup.selectAll(`.bar-${metricIndex}`)
                         .data(this.data)
@@ -389,9 +441,9 @@
                         .append('rect')
                         .attr('class', `bar bar-${metricIndex}`)
                         .attr('x', (d, i) => xScale(i) + (xScale.bandwidth() / metrics.length) * metricIndex)
-                        .attr('y', d => yScale(d[metric] || 0))
+                        .attr('y', d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('width', xScale.bandwidth() / metrics.length)
-                        .attr('height', d => height - yScale(d[metric] || 0))
+                        .attr('height', d => height - yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('fill', this.color(metricIndex))
                         .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
                         .on('mouseout', () => this.hideTooltip());
@@ -400,6 +452,8 @@
 
             showTooltip(event, data, metric) {
                 const tooltip = d3.select('#tooltip');
+                const counterValue = data[metric] || 0;
+                const diffValue = data[`${metric}_diff`] || 0;
                 
                 tooltip
                     .style('opacity', 1)
@@ -408,7 +462,8 @@
                     .html(`
                         <strong>${metric}</strong><br>
                         Time: ${data.time.toLocaleString()}<br>
-                        Value: ${(data[metric] || 0).toFixed(2)}
+                        Counter: ${counterValue.toFixed(2)}<br>
+                        Rate: ${diffValue.toFixed(2)}
                     `);
             }
 
@@ -421,13 +476,15 @@
                 legend.html('');
 
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const dataType = document.getElementById('dataType').value;
                 
                 metrics.forEach((metric, index) => {
+                    const label = dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`;
                     legend.append('div')
                         .attr('class', 'legend-item')
                         .html(`
                             <div class="legend-color" style="background-color: ${this.color(index)}"></div>
-                            <span>${metric}</span>
+                            <span>${label}</span>
                         `);
                 });
             }
