@@ -216,11 +216,22 @@
                         this.data[i][`${metric}_diff`] = difference;
                     }
                     
-                    // For the first data point, set difference to 0 or null
-                    this.data[0][`${metric}_diff`] = 0;
-                });
-                
-                console.log('Calculated differences for metrics:', metrics);
+                                    // For the first data point, set difference to 0 or null
+                this.data[0][`${metric}_diff`] = 0;
+            });
+            
+            // Remove first data point if any metric has negative difference
+            const hasNegativeFirstDiff = metrics.some(metric => {
+                const firstDiff = this.data[0][`${metric}_diff`];
+                return firstDiff < 0;
+            });
+            
+            if (hasNegativeFirstDiff) {
+                console.log('Removing first data point due to negative difference');
+                this.data = this.data.slice(1);
+            }
+            
+            console.log('Calculated differences for metrics:', metrics);
                 
                 // Log some sample data to show the difference
                 if (this.data.length > 0) {
