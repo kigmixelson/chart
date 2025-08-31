@@ -368,16 +368,16 @@
                     .domain([0, maxValue])
                     .range([height, 0]);
 
-                // Add chart title to show current data type and period
+                // Add chart title to show current data type and period (positioned inside chart body)
                 const titleText = this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart';
                 const periodText = this.config.period ? ` (${this.config.period})` : '';
                 
                 chartGroup.append('text')
-                    .attr('x', width / 2)
-                    .attr('y', -10)
-                    .attr('text-anchor', 'middle')
+                    .attr('x', 10)
+                    .attr('y', 20)
+                    .attr('text-anchor', 'start')
                     .attr('class', 'chart-title')
-                    .style('font-size', '12px')
+                    .style('font-size', '11px')
                     .style('font-weight', 'bold')
                     .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
                     .text(titleText + periodText);
@@ -474,16 +474,16 @@
                     })))])
                     .range([height, 0]);
 
-                // Add chart title to show current data type and period
+                // Add chart title to show current data type and period (positioned inside chart body)
                 const titleText = this.config.dataType === 'diff' ? '📊 Rate Chart' : '📈 Counter Chart';
                 const periodText = this.config.period ? ` (${this.config.period})` : '';
                 
                 chartGroup.append('text')
-                    .attr('x', width / 2)
-                    .attr('y', -10)
-                    .attr('text-anchor', 'middle')
+                    .attr('x', 10)
+                    .attr('y', 20)
+                    .attr('text-anchor', 'start')
                     .attr('class', 'chart-title')
-                    .style('font-size', '12px')
+                    .style('font-size', '11px')
                     .style('font-weight', 'bold')
                     .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
                     .text(titleText + periodText);
