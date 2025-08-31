@@ -273,9 +273,9 @@
                 const xAxis = d3.axisBottom(xScale);
                 const yAxis = d3.axisLeft(yScale)
                     .tickFormat(d => {
-                        if (d >= 1e9) return d3.format('.1f')(d / 1e9) + 'B';
-                        if (d >= 1e6) return d3.format('.1f')(d / 1e6) + 'M';
-                        if (d >= 1e3) return d3.format('.1f')(d / 1e3) + 'K';
+                        if (d >= Math.pow(1024, 3)) return d3.format('.1f')(d / Math.pow(1024, 3)) + 'G';
+                        if (d >= Math.pow(1024, 2)) return d3.format('.1f')(d / Math.pow(1024, 2)) + 'M';
+                        if (d >= 1024) return d3.format('.1f')(d / 1024) + 'K';
                         return d3.format(',.0f')(d);
                     })
                     .ticks(5); // Limit to 5 ticks for better readability
@@ -357,9 +357,9 @@
                 const xAxis = d3.axisBottom(xScale);
                 const yAxis = d3.axisLeft(yScale)
                     .tickFormat(d => {
-                        if (d >= 1e9) return d3.format('.1f')(d / 1e9) + 'B';
-                        if (d >= 1e6) return d3.format('.1f')(d / 1e6) + 'M';
-                        if (d >= 1e3) return d3.format('.1f')(d / 1e3) + 'K';
+                        if (d >= Math.pow(1024, 3)) return d3.format('.1f')(d / Math.pow(1024, 3)) + 'G';
+                        if (d >= Math.pow(1024, 2)) return d3.format('.1f')(d / Math.pow(1024, 2)) + 'M';
+                        if (d >= 1024) return d3.format('.1f')(d / 1024) + 'K';
                         return d3.format(',.0f')(d);
                     })
                     .ticks(5); // Limit to 5 ticks for better readability
@@ -419,14 +419,14 @@
                 const formatValue = d3.format(',.0f');
                 const formatTime = d3.timeFormat('%Y-%m-%d %H:%M:%S');
                 
-                // Format large numbers with appropriate units
+                // Format large numbers with appropriate units (1024-based for traffic data)
                 let displayValue = formatValue(data.value);
-                if (data.value >= 1e9) {
-                    displayValue = d3.format('.2f')(data.value / 1e9) + 'B';
-                } else if (data.value >= 1e6) {
-                    displayValue = d3.format('.2f')(data.value / 1e6) + 'M';
-                } else if (data.value >= 1e3) {
-                    displayValue = d3.format('.2f')(data.value / 1e3) + 'K';
+                if (data.value >= Math.pow(1024, 3)) {
+                    displayValue = d3.format('.2f')(data.value / Math.pow(1024, 3)) + 'G';
+                } else if (data.value >= Math.pow(1024, 2)) {
+                    displayValue = d3.format('.2f')(data.value / Math.pow(1024, 2)) + 'M';
+                } else if (data.value >= 1024) {
+                    displayValue = d3.format('.2f')(data.value / 1024) + 'K';
                 }
                 
                 tooltip.style('opacity', 1)
