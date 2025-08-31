@@ -116,18 +116,42 @@
             init() {
                 // Parse URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
-                this.config = {
-                    objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
-                    fromTimestamp: urlParams.get('from') || '1756497678991',
-                    toTimestamp: urlParams.get('to') || '1756592718991',
-                    downsample: urlParams.get('downsample') || '5m-avg',
-                    metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
-                    authToken: urlParams.get('authToken'), // Optional - no default
-                    chartType: urlParams.get('chartType') || 'line',
-                    dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
-                    width: parseInt(urlParams.get('width')) || window.innerWidth,
-                    height: parseInt(urlParams.get('height')) || window.innerHeight
-                };
+                
+                // Check if period is specified
+                const period = urlParams.get('period');
+                
+                if (period) {
+                    // Calculate time range and downsample based on period
+                    const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(period);
+                    
+                    this.config = {
+                        objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
+                        fromTimestamp: fromTimestamp,
+                        toTimestamp: toTimestamp,
+                        downsample: downsample,
+                        metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
+                        authToken: urlParams.get('authToken'), // Optional - no default
+                        chartType: urlParams.get('chartType') || 'line',
+                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
+                        width: parseInt(urlParams.get('width')) || window.innerWidth,
+                        height: parseInt(urlParams.get('height')) || window.innerHeight,
+                        period: period
+                    };
+                } else {
+                    // Use explicit from/to/downsample if period not specified
+                    this.config = {
+                        objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
+                        fromTimestamp: urlParams.get('from') || '1756497678991',
+                        toTimestamp: urlParams.get('to') || '1756592718991',
+                        downsample: urlParams.get('downsample') || '5m-avg',
+                        metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
+                        authToken: urlParams.get('authToken'), // Optional - no default
+                        chartType: urlParams.get('chartType') || 'line',
+                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
+                        width: parseInt(urlParams.get('width')) || window.innerWidth,
+                        height: parseInt(urlParams.get('height')) || window.innerHeight
+                    };
+                }
 
                 // Adjust chart dimensions
                 this.width = this.config.width - 40; // Account for padding
@@ -137,6 +161,48 @@
                 
                 // Auto-load data
                 this.loadMetricsData();
+            }
+
+            calculateTimeRange(period) {
+                const now = Date.now();
+                let fromTimestamp, toTimestamp, downsample;
+
+                switch (period.toLowerCase()) {
+                    case 'hour':
+                        fromTimestamp = now - (60 * 60 * 1000); // 1 hour ago
+                        toTimestamp = now;
+                        downsample = '1m-avg';
+                        break;
+                    case 'day':
+                        fromTimestamp = now - (24 * 60 * 60 * 1000); // 1 day ago
+                        toTimestamp = now;
+                        downsample = '1h-avg';
+                        break;
+                    case 'week':
+                        fromTimestamp = now - (7 * 24 * 60 * 60 * 1000); // 1 week ago
+                        toTimestamp = now;
+                        downsample = '1h-avg';
+                        break;
+                    case 'month':
+                        fromTimestamp = now - (30 * 24 * 60 * 60 * 1000); // 1 month ago
+                        toTimestamp = now;
+                        downsample = '1d-avg';
+                        break;
+                    default:
+                        // Default to 1 day if invalid period
+                        fromTimestamp = now - (24 * 60 * 60 * 1000);
+                        toTimestamp = now;
+                        downsample = '1h-avg';
+                        console.warn(`Invalid period "${period}", defaulting to "day"`);
+                }
+
+                console.log(`Period "${period}": from ${new Date(fromTimestamp).toISOString()} to ${new Date(toTimestamp).toISOString()}, downsample: ${downsample}`);
+                
+                return {
+                    fromTimestamp: fromTimestamp.toString(),
+                    toTimestamp: toTimestamp.toString(),
+                    downsample: downsample
+                };
             }
 
             async loadMetricsData() {
@@ -299,7 +365,10 @@
                     .domain([0, maxValue])
                     .range([height, 0]);
 
-                // Add chart title to show current data type
+                // Add chart title to show current data type and period
+                const titleText = this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart';
+                const periodText = this.config.period ? ` (${this.config.period})` : '';
+                
                 chartGroup.append('text')
                     .attr('x', width / 2)
                     .attr('y', -10)
@@ -308,7 +377,7 @@
                     .style('font-size', '12px')
                     .style('font-weight', 'bold')
                     .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
-                    .text(this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart');
+                    .text(titleText + periodText);
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -399,7 +468,10 @@
                     })))])
                     .range([height, 0]);
 
-                // Add chart title to show current data type
+                // Add chart title to show current data type and period
+                const titleText = this.config.dataType === 'diff' ? '📊 Rate Chart' : '📈 Counter Chart';
+                const periodText = this.config.period ? ` (${this.config.period})` : '';
+                
                 chartGroup.append('text')
                     .attr('x', width / 2)
                     .attr('y', -10)
@@ -408,7 +480,7 @@
                     .style('font-size', '12px')
                     .style('font-weight', 'bold')
                     .style('fill', this.config.dataType === 'diff' ? '#e74c3c' : '#2ecc71')
-                    .text(this.config.dataType === 'diff' ? '📊 Rate Chart' : '📈 Counter Chart');
+                    .text(titleText + periodText);
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -457,6 +529,15 @@
                 legend.html('');
 
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                
+                // Add period info if available
+                if (this.config.period) {
+                    legend.append('div')
+                        .attr('class', 'legend-item')
+                        .style('font-weight', 'bold')
+                        .style('margin-bottom', '4px')
+                        .text(`Period: ${this.config.period} (${this.config.downsample})`);
+                }
                 
                 metrics.forEach((metric, index) => {
                     const legendItem = legend.append('div')
