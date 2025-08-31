@@ -154,15 +154,15 @@
                 const toTime = parseInt(document.getElementById('toTimestamp').value);
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 
-                const timeStep = (toTime - fromTime) / 20; // 20 data points
+                const timeStep = (toTime - fromTime) / 50; // 50 data points for more detail
                 
-                // Generate counter data (continuously increasing)
+                // Generate counter data with realistic network traffic patterns
                 let currentValues = {};
                 metrics.forEach((metric, index) => {
-                    currentValues[metric] = Math.random() * 1000 + 100; // Starting values
+                    currentValues[metric] = Math.random() * 10000 + 1000; // Higher starting values
                 });
                 
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 50; i++) {
                     const timestamp = fromTime + (i * timeStep);
                     const dataPoint = {
                         timestamp: timestamp,
@@ -170,8 +170,31 @@
                     };
                     
                     metrics.forEach((metric, index) => {
-                        // Increment counter values (simulating network traffic counters)
-                        currentValues[metric] += Math.random() * 50 + 10;
+                        // Simulate realistic network traffic with varying intensity
+                        let increment;
+                        if (i < 10) {
+                            // Low traffic period
+                            increment = Math.random() * 100 + 50;
+                        } else if (i < 20) {
+                            // Medium traffic period
+                            increment = Math.random() * 300 + 200;
+                        } else if (i < 35) {
+                            // High traffic period (peak)
+                            increment = Math.random() * 800 + 500;
+                        } else if (i < 45) {
+                            // Medium traffic period
+                            increment = Math.random() * 300 + 200;
+                        } else {
+                            // Low traffic period
+                            increment = Math.random() * 100 + 50;
+                        }
+                        
+                        // Add some random spikes
+                        if (Math.random() < 0.1) { // 10% chance of spike
+                            increment *= 2;
+                        }
+                        
+                        currentValues[metric] += increment;
                         dataPoint[metric] = currentValues[metric];
                     });
                     
@@ -198,6 +221,23 @@
                 });
                 
                 console.log('Calculated differences for metrics:', metrics);
+                
+                // Log some sample data to show the difference
+                if (this.data.length > 0) {
+                    console.log('Sample data comparison:');
+                    console.log('First 5 data points:');
+                    for (let i = 0; i < Math.min(5, this.data.length); i++) {
+                        const point = this.data[i];
+                        console.log(`Point ${i}:`, {
+                            time: point.time.toLocaleTimeString(),
+                            ...metrics.reduce((acc, metric) => {
+                                acc[`${metric}_counter`] = point[metric];
+                                acc[`${metric}_rate`] = point[`${metric}_diff`];
+                                return acc;
+                            }, {})
+                        });
+                    }
+                }
             }
 
             setupEventListeners() {
@@ -343,6 +383,17 @@
                     })))])
                     .range([height, 0]);
 
+                // Add chart title to show current data type
+                chartGroup.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', -10)
+                    .attr('text-anchor', 'middle')
+                    .attr('class', 'chart-title')
+                    .style('font-size', '14px')
+                    .style('font-weight', 'bold')
+                    .style('fill', dataType === 'diff' ? '#e74c3c' : '#2ecc71')
+                    .text(dataType === 'diff' ? '📈 Rate Chart (Differences)' : '📊 Counter Chart (Raw Values)');
+
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
                 const yAxis = d3.axisLeft(yScale);
@@ -373,13 +424,13 @@
                         .y(d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .curve(d3.curveMonotoneX);
 
-                    // Add line path
+                    // Add line path with different stroke width for rate vs counter
                     chartGroup.append('path')
                         .datum(this.data)
                         .attr('class', 'line-path')
                         .attr('fill', 'none')
                         .attr('stroke', this.color(index))
-                        .attr('stroke-width', this.strokeWidth)
+                        .attr('stroke-width', dataType === 'diff' ? this.strokeWidth + 1 : this.strokeWidth)
                         .attr('d', line);
 
                     // Add data points
@@ -390,7 +441,7 @@
                         .attr('class', `data-point data-point-${index}`)
                         .attr('cx', d => xScale(d.time))
                         .attr('cy', d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
-                        .attr('r', this.pointSize)
+                        .attr('r', dataType === 'diff' ? this.pointSize + 1 : this.pointSize)
                         .attr('fill', this.color(index))
                         .attr('stroke', 'white')
                         .attr('stroke-width', 2)
@@ -414,6 +465,17 @@
                         return dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0);
                     })))])
                     .range([height, 0]);
+
+                // Add chart title to show current data type
+                chartGroup.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', -10)
+                    .attr('text-anchor', 'middle')
+                    .attr('class', 'chart-title')
+                    .style('font-size', '14px')
+                    .style('font-weight', 'bold')
+                    .style('fill', dataType === 'diff' ? '#e74c3c' : '#2ecc71')
+                    .text(dataType === 'diff' ? '📊 Rate Chart (Differences)' : '📈 Counter Chart (Raw Values)');
 
                 // Add axes
                 const xAxis = d3.axisBottom(xScale);
@@ -445,6 +507,7 @@
                         .attr('width', xScale.bandwidth() / metrics.length)
                         .attr('height', d => height - yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('fill', this.color(metricIndex))
+                        .style('opacity', dataType === 'diff' ? 0.8 : 0.6)
                         .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
                         .on('mouseout', () => this.hideTooltip());
                 });
