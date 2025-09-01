@@ -142,7 +142,7 @@
                         metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
                         authToken: urlParams.get('authToken'), // Optional - no default
                         chartType: urlParams.get('chartType') || 'line',
-                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
+                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff), speed, or raw counter
                         width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
                         period: period,
@@ -158,7 +158,7 @@
                         metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
                         authToken: urlParams.get('authToken'), // Optional - no default
                         chartType: urlParams.get('chartType') || 'line',
-                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff) or raw counter
+                        dataType: urlParams.get('dataType') || 'diff', // Rate (diff), speed, or raw counter
                         width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
                         name: urlParams.get('name') // Optional custom chart name
@@ -263,6 +263,12 @@
                 }
             }
 
+            getMetricValue(dataPoint, metric) {
+                if (this.config.dataType === 'diff') return dataPoint[`${metric}_diff`] || 0;
+                if (this.config.dataType === 'speed') return dataPoint[`${metric}_speed`] || 0;
+                return dataPoint[metric] || 0;
+            }
+
             async loadMetricsData() {
                 try {
                     // Recalculate time range if using period (for auto-reload)
@@ -305,9 +311,11 @@
                     this.data = this.transformApiData(rawData);
                     console.log('Transformed data:', this.data);
                     
-                    // Calculate differences if data type is 'diff'
+                    // Calculate differences or speed based on data type
                     if (this.config.dataType === 'diff') {
                         this.calculateDifferences();
+                    } else if (this.config.dataType === 'speed') {
+                        this.calculateSpeed();
                     }
                     
                     this.createChart();
@@ -401,6 +409,35 @@
                 console.log('Calculated differences for metrics:', metrics);
             }
 
+            calculateSpeed() {
+                const metrics = this.config.metrics.split(',').map(m => m.trim());
+                
+                // First calculate differences
+                this.calculateDifferences();
+                
+                // Then calculate speed (difference per unit time)
+                metrics.forEach(metric => {
+                    for (let i = 1; i < this.data.length; i++) {
+                        const currentTime = this.data[i].timestamp;
+                        const previousTime = this.data[i-1].timestamp;
+                        const timeDiff = (currentTime - previousTime) / 1000; // Convert to seconds
+                        
+                        const diff = this.data[i][`${metric}_diff`] || 0;
+                        
+                        // Calculate speed: difference per second
+                        const speed = timeDiff > 0 ? diff / timeDiff : 0;
+                        
+                        // Store the speed in a new field
+                        this.data[i][`${metric}_speed`] = speed;
+                    }
+                    
+                    // For the first data point, set speed to 0
+                    this.data[0][`${metric}_speed`] = 0;
+                });
+                
+                console.log('Calculated speed for metrics:', metrics);
+            }
+
             showError(message) {
                 const chartContainer = d3.select('#chart');
                 chartContainer.html(`<div class="error">${message}</div>`);
@@ -439,8 +476,8 @@
             createLineChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 
-                // Filter data to remove first point when showing differences
-                const chartData = this.config.dataType === 'diff' ? this.data.slice(1) : this.data;
+                // Filter data to remove first point when showing differences or speed
+                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(chartData, d => d.time))
@@ -448,7 +485,11 @@
 
                 // Use appropriate values for Y scale based on data type with 10% padding
                 const allValues = chartData.flatMap(d => 
-                    metrics.map(m => this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0))
+                    metrics.map(m => {
+                        if (this.config.dataType === 'diff') return d[`${m}_diff`] || 0;
+                        if (this.config.dataType === 'speed') return d[`${m}_speed`] || 0;
+                        return d[m] || 0;
+                    })
                 );
                 const minValue = d3.min(allValues);
                 const maxValue = d3.max(allValues);
@@ -508,9 +549,10 @@
                 metrics.forEach((metric, index) => {
                     const lineData = chartData.map(d => ({
                         time: d.time,
-                        value: this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0),
+                        value: this.getMetricValue(d, metric),
                         counterValue: d[metric] || 0,
-                        rateValue: d[`${metric}_diff`] || 0
+                        rateValue: d[`${metric}_diff`] || 0,
+                        speedValue: d[`${metric}_speed`] || 0
                     }));
 
                     chartGroup.append('path')
@@ -518,7 +560,7 @@
                         .attr('class', 'line-path')
                         .attr('fill', 'none')
                         .attr('stroke', this.color(index))
-                        .attr('stroke-width', this.config.dataType === 'diff' ? this.strokeWidth + 1 : this.strokeWidth)
+                        .attr('stroke-width', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.strokeWidth + 1 : this.strokeWidth)
                         .attr('d', line);
 
                     // Add data points
@@ -529,7 +571,7 @@
                         .attr('class', `data-point points-${index}`)
                         .attr('cx', d => xScale(d.time))
                         .attr('cy', d => yScale(d.value))
-                        .attr('r', this.config.dataType === 'diff' ? this.pointSize + 1 : this.pointSize)
+                        .attr('r', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.pointSize + 1 : this.pointSize)
                         .attr('fill', this.color(index))
                         .attr('stroke', 'white')
                         .attr('stroke-width', 1)
@@ -545,8 +587,8 @@
             createBarChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 
-                // Filter data to remove first point when showing differences
-                const chartData = this.config.dataType === 'diff' ? this.data.slice(1) : this.data;
+                // Filter data to remove first point when showing differences or speed
+                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
                 
                 const xScale = d3.scaleBand()
                     .domain(chartData.map(d => d.time))
@@ -555,7 +597,11 @@
 
                 // Use appropriate values for Y scale based on data type with 10% padding
                 const allValues = chartData.flatMap(d => 
-                    metrics.map(m => this.config.dataType === 'diff' ? (d[`${m}_diff`] || 0) : (d[m] || 0))
+                    metrics.map(m => {
+                        if (this.config.dataType === 'diff') return d[`${m}_diff`] || 0;
+                        if (this.config.dataType === 'speed') return d[`${m}_speed`] || 0;
+                        return d[m] || 0;
+                    })
                 );
                 const minValue = d3.min(allValues);
                 const maxValue = d3.max(allValues);
@@ -602,11 +648,11 @@
                         .append('rect')
                         .attr('class', `bar bars-${index}`)
                         .attr('x', d => xScale(d.time))
-                        .attr('y', d => yScale(this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
+                        .attr('y', d => yScale(this.getMetricValue(d, metric)))
                         .attr('width', xScale.bandwidth())
-                        .attr('height', d => height - yScale(this.config.dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
+                        .attr('height', d => height - yScale(this.getMetricValue(d, metric)))
                         .attr('fill', this.color(index))
-                        .attr('opacity', this.config.dataType === 'diff' ? 0.9 : 0.8)
+                        .attr('opacity', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? 0.9 : 0.8)
                         .on('mouseover', (event, d) => {
                             this.showTooltip(event, d, metric);
                         })
@@ -627,7 +673,7 @@
                 if (this.config.name) {
                     titleText = this.config.name;
                 } else {
-                    titleText = this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart';
+                    titleText = this.config.dataType === 'speed' ? '⚡ Speed Chart' : (this.config.dataType === 'diff' ? '📈 Rate Chart' : '📊 Counter Chart');
                 }
                 const periodText = this.config.period ? ` (${this.config.period})` : '';
                 
@@ -644,7 +690,7 @@
                         .attr('class', 'legend-color')
                         .style('background-color', this.color(index));
 
-                    const label = this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`;
+                    const label = this.config.dataType === 'speed' ? `${metric} (Speed)` : (this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`);
                     legendItem.append('span')
                         .text(label);
                 });
@@ -655,9 +701,10 @@
                 const formatValue = d3.format(',.0f');
                 const formatTime = d3.timeFormat('%Y-%m-%d %H:%M:%S');
                 
-                // Get both counter and rate values
-                const counterValue = data.counterValue || data.value || 0;
-                const rateValue = data.rateValue || data.value || 0;
+                // Compute values for tooltip regardless of chart type
+                const counterValue = (data[metric] ?? data.counterValue ?? 0);
+                const rateValue = (data[`${metric}_diff`] ?? data.rateValue ?? 0);
+                const speedValue = (data[`${metric}_speed`] ?? data.speedValue ?? 0);
                 
                 // Format large numbers with appropriate units (1024-based for traffic data)
                 let displayCounter = formatValue(counterValue);
@@ -670,6 +717,7 @@
                 }
                 
                 let displayRate = formatValue(rateValue);
+                let displaySpeed = formatValue(speedValue);
                 if (rateValue >= Math.pow(1024, 3)) {
                     displayRate = d3.format('.2f')(rateValue / Math.pow(1024, 3)) + 'G';
                 } else if (rateValue >= Math.pow(1024, 2)) {
@@ -677,10 +725,19 @@
                 } else if (rateValue >= 1024) {
                     displayRate = d3.format('.2f')(rateValue / 1024) + 'K';
                 }
+                if (speedValue >= Math.pow(1024, 3)) {
+                    displaySpeed = d3.format('.2f')(speedValue / Math.pow(1024, 3)) + 'G';
+                } else if (speedValue >= Math.pow(1024, 2)) {
+                    displaySpeed = d3.format('.2f')(speedValue / Math.pow(1024, 2)) + 'M';
+                } else if (speedValue >= 1024) {
+                    displaySpeed = d3.format('.2f')(speedValue / 1024) + 'K';
+                }
                 
                 let tooltipContent = `<strong>${metric}</strong><br>Time: ${formatTime(data.time)}<br>`;
                 
-                if (this.config.dataType === 'diff') {
+                if (this.config.dataType === 'speed') {
+                    tooltipContent += `Speed: ${displaySpeed} (${formatValue(speedValue)})<br>Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                } else if (this.config.dataType === 'diff') {
                     tooltipContent += `Rate: ${displayRate} (${formatValue(rateValue)})<br>Counter: ${displayCounter} (${formatValue(counterValue)})`;
                 } else {
                     tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
