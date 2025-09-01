@@ -307,26 +307,38 @@
                     });
                     
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        console.error(`HTTP error! status: ${response.status}`);
+                        this.showError('Data source is not selected or load failed');
+                        return;
                     }
                     
-                    const rawData = await response.json();
-                    console.log('Raw API response:', rawData);
+                    let rawData;
+                    try {
+                        rawData = await response.json();
+                        console.log('Raw API response:', rawData);
+                    } catch (jsonError) {
+                        console.error('Error parsing JSON response:', jsonError);
+                        this.showError('Data source is not selected or load failed');
+                        return;
+                    }
                     
                     this.data = this.transformApiData(rawData);
                     console.log('Transformed data:', this.data);
                     
-                    // Calculate differences or speed based on data type
-                    if (this.config.dataType === 'diff') {
-                        this.calculateDifferences();
-                    } else if (this.config.dataType === 'speed') {
-                        this.calculateSpeed();
+                    // Only proceed if we have data
+                    if (this.data.length > 0) {
+                        // Calculate differences or speed based on data type
+                        if (this.config.dataType === 'diff') {
+                            this.calculateDifferences();
+                        } else if (this.config.dataType === 'speed') {
+                            this.calculateSpeed();
+                        }
+                        
+                        this.createChart();
                     }
-                    
-                    this.createChart();
                 } catch (error) {
                     console.error('Error loading metrics data:', error);
-                    this.showError(`Failed to load data: ${error.message}`);
+                    this.showError('Data source is not selected or load failed');
                 }
             }
 
@@ -335,6 +347,7 @@
                 
                 if (!Array.isArray(rawData) || rawData.length === 0) {
                     console.warn('No data received from API');
+                    this.showError('Data source is not selected or load failed');
                     return [];
                 }
                 
@@ -455,7 +468,7 @@
                 chartContainer.html('');
 
                 if (this.data.length === 0) {
-                    this.showError('No data available');
+                    this.showError('Data source is not selected or load failed');
                     return;
                 }
 
