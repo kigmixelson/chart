@@ -697,7 +697,10 @@
                         .attr('class', 'legend-color')
                         .style('background-color', this.color(index));
 
-                    const label = this.config.dataType === 'speed' ? `${metric} (Speed)` : (this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`);
+                    let label = this.config.dataType === 'speed' ? `${metric} (Speed)` : (this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`);
+                    if (this.config.divider) {
+                        label += ` ÷${this.config.divider}`;
+                    }
                     legendItem.append('span')
                         .text(label);
                 });
@@ -740,14 +743,37 @@
                     displaySpeed = d3.format('.2f')(speedValue / 1024) + 'K';
                 }
                 
-                let tooltipContent = `<strong>${metric}</strong><br>Time: ${formatTime(data.time)}<br>`;
+                // Build tooltip header with metric name and data type
+                const dataTypeLabel = this.config.dataType === 'speed' ? 'Speed' : 
+                                    (this.config.dataType === 'diff' ? 'Rate' : 'Counter');
+                let tooltipContent = `<strong>${metric} (${dataTypeLabel})</strong><br>Time: ${formatTime(data.time)}<br>`;
                 
+                // Add divider info if present
+                if (this.config.divider) {
+                    tooltipContent += `Divider: ${this.config.divider}<br>`;
+                }
+                
+                // Show values based on current data type
                 if (this.config.dataType === 'speed') {
-                    tooltipContent += `Speed: ${displaySpeed} (${formatValue(speedValue)})<br>Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    tooltipContent += `Speed: ${displaySpeed} (${formatValue(speedValue)})/sec<br>`;
+                    if (this.config.divider) {
+                        tooltipContent += `Scaled Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    } else {
+                        tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    }
                 } else if (this.config.dataType === 'diff') {
-                    tooltipContent += `Rate: ${displayRate} (${formatValue(rateValue)})<br>Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    tooltipContent += `Rate: ${displayRate} (${formatValue(rateValue)})<br>`;
+                    if (this.config.divider) {
+                        tooltipContent += `Scaled Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    } else {
+                        tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    }
                 } else {
-                    tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    if (this.config.divider) {
+                        tooltipContent += `Scaled Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    } else {
+                        tooltipContent += `Counter: ${displayCounter} (${formatValue(counterValue)})`;
+                    }
                 }
                 
                 tooltip.style('opacity', 1)
