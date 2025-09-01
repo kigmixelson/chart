@@ -21,6 +21,11 @@ cp index-Qi_VvB8y.css dist/
 echo "Copying JavaScript files..."
 cp main.js dist/
 
+# Copy local D3 runtime so app works offline
+if [ -f public/d3.v7.min.js ]; then
+  cp public/d3.v7.min.js dist/
+fi
+
 # Copy documentation
 echo "Copying documentation..."
 cp README.md dist/
