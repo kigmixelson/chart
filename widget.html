@@ -335,6 +335,9 @@
                         }
                         
                         this.createChart();
+                    } else {
+                        // No data available
+                        this.showError('Data source is not selected or load failed');
                     }
                 } catch (error) {
                     console.error('Error loading metrics data:', error);
@@ -347,7 +350,6 @@
                 
                 if (!Array.isArray(rawData) || rawData.length === 0) {
                     console.warn('No data received from API');
-                    this.showError('Data source is not selected or load failed');
                     return [];
                 }
                 
