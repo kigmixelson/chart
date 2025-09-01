@@ -129,6 +129,9 @@
                 
                 // Check if period is specified
                 const period = urlParams.get('period');
+                // Optional divider parameter
+                const dividerParam = urlParams.get('divider');
+                const divider = dividerParam ? parseFloat(dividerParam) : null;
                 
                 if (period) {
                     // Calculate time range and downsample based on period
@@ -146,7 +149,8 @@
                         width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
                         period: period,
-                        name: urlParams.get('name') // Optional custom chart name
+                        name: urlParams.get('name'), // Optional custom chart name
+                        divider: !isNaN(divider) && divider > 0 ? divider : null
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -161,7 +165,8 @@
                         dataType: urlParams.get('dataType') || 'diff', // Rate (diff), speed, or raw counter
                         width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
-                        name: urlParams.get('name') // Optional custom chart name
+                        name: urlParams.get('name'), // Optional custom chart name
+                        divider: !isNaN(divider) && divider > 0 ? divider : null
                     };
                 }
 
@@ -358,7 +363,9 @@
                         const metricName = metricData.metric;
                         const dpsEntry = metricData.dps.find(([ts]) => ts === timestamp);
                         if (dpsEntry) {
-                            dataPoint[metricName] = dpsEntry[1];
+                            const rawValue = dpsEntry[1];
+                            const divider = this.config?.divider;
+                            dataPoint[metricName] = divider ? (rawValue / divider) : rawValue;
                         }
                     });
                     
