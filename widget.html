@@ -154,7 +154,8 @@
                         period: period,
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
-                        forecast: forecast // Forecast mode parameter
+                        forecast: forecast, // Forecast mode parameter
+                        skipzero: urlParams.get('skipzero') === 'true' // Skip zero values parameter
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -171,7 +172,8 @@
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
-                        forecast: urlParams.get('forecast') === 'true' // Forecast mode parameter
+                        forecast: urlParams.get('forecast') === 'true', // Forecast mode parameter
+                        skipzero: urlParams.get('skipzero') === 'true' // Skip zero values parameter
                     };
                 }
 
@@ -353,10 +355,26 @@
                     }
                     this.data = this.transformApiData(allData);
                     
+                    // Apply zero value filtering if skipzero is enabled
+                    if (this.config.skipzero) {
+                        const originalLength = this.data.length;
+                        this.data = this.filterZeroValues(this.data);
+                        const filteredLength = this.data.length;
+                        console.log(`Skipzero enabled: filtered ${originalLength - filteredLength} zero-value data points, ${filteredLength} remaining`);
+                    }
+                    
                     // Fallback to sample data if no real data available
                     if (this.data.length === 0) {
                         console.log('No real data available, using sample data');
                         this.generateSampleData();
+                        
+                        // Apply zero value filtering to sample data if skipzero is enabled
+                        if (this.config.skipzero) {
+                            const originalLength = this.data.length;
+                            this.data = this.filterZeroValues(this.data);
+                            const filteredLength = this.data.length;
+                            console.log(`Skipzero enabled (sample data): filtered ${originalLength - filteredLength} zero-value data points, ${filteredLength} remaining`);
+                        }
                     }
                     
                     // Only proceed if we have data
@@ -462,6 +480,24 @@
                     
                     this.data.push(dataPoint);
                 }
+            }
+
+            filterZeroValues(data) {
+                if (!this.config.skipzero) {
+                    return data;
+                }
+                
+                const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
+                
+                return data.filter(dataPoint => {
+                    // Check if any metric has a non-zero value
+                    return parsedMetrics.some(parsedMetric => {
+                        const metric = parsedMetric.metricName;
+                        const value = this.getMetricValue(dataPoint, metric);
+                        return value !== 0 && value !== null && value !== undefined;
+                    });
+                });
             }
 
             parseMetrics(metrics) {

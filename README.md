@@ -225,6 +225,9 @@ The widget can be embedded using URL parameters:
 
 <!-- Multi-object chart with different metrics from different objects -->
 <iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics={{67cb1f1f120ab073c5adb8a2:ifHCInOctets}},{{67d6b40c120ab073c5ae9a2b:upper_bound==freeMemory}}&chartType=line&period=day"></iframe>
+
+<!-- Chart with forecast mode and zero value filtering -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=line&period=hour&forecast=true&skipzero=true"></iframe>
 ```
 
 #### Widget Parameters
@@ -239,6 +242,8 @@ The widget can be embedded using URL parameters:
 - `width`: Widget width in pixels (optional)
 - `height`: Widget height in pixels (optional)
 - `name`: Custom chart title (optional)
+- `forecast`: Enable forecast mode to extend time range by 30% (true/false, optional)
+- `skipzero`: Skip zero values from rendering (true/false, optional)
 
 ## API Response Format
 
