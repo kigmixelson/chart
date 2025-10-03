@@ -34,7 +34,28 @@ A web-based chart application for visualizing metrics data from the SAYMON monit
 - **Authentication Token**: Your SAYMON API authentication token
 - **Time Range**: From and to timestamps in milliseconds
 - **Metrics**: Comma-separated list of metrics to fetch (e.g., `ifHCInOctets,ifHCOutOctets`)
+  - **Standard format**: `metricName` (uses default object ID)
+  - **Object-specific format**: `{{objectId:metricName}}` (uses specified object ID)
 - **Downsample**: Data aggregation interval (e.g., `5m-avg`, `1h-avg`)
+
+### Metric Parameter Formats
+
+The application supports two formats for specifying metrics:
+
+#### Standard Format
+```
+Metrics: ifHCInOctets,ifHCOutOctets
+```
+- Uses the default object ID from the Object ID field
+- All metrics are fetched from the same object
+
+#### Object-Specific Format
+```
+Metrics: {{67cb1f1f120ab073c5adb8a2:ifHCInOctets}},{{67d6b40c120ab073c5ae9a2b:upper_bound==freeMemory}}
+```
+- Each metric can specify its own object ID
+- Format: `{{objectId:metricName}}`
+- Allows fetching metrics from multiple objects in a single chart
 
 ### Example Configuration
 
@@ -44,6 +65,16 @@ Auth Token: 285c4fd9-6335-41eb-b516-189eb7482d19
 From: 1756497678991
 To: 1756592718991
 Metrics: ifHCInOctets,ifHCOutOctets
+Downsample: 5m-avg
+```
+
+#### Multi-Object Example
+```
+Object ID: 67cb1f1f120ab073c5adb8a2 (default)
+Auth Token: 285c4fd9-6335-41eb-b516-189eb7482d19
+From: 1756497678991
+To: 1756592718991
+Metrics: {{67cb1f1f120ab073c5adb8a2:ifHCInOctets}},{{67d6b40c120ab073c5ae9a2b:upper_bound==freeMemory}}
 Downsample: 5m-avg
 ```
 
@@ -191,12 +222,17 @@ The widget can be embedded using URL parameters:
 
 <!-- Dots chart for last hour -->
 <iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=dots&period=hour"></iframe>
+
+<!-- Multi-object chart with different metrics from different objects -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics={{67cb1f1f120ab073c5adb8a2:ifHCInOctets}},{{67d6b40c120ab073c5ae9a2b:upper_bound==freeMemory}}&chartType=line&period=day"></iframe>
 ```
 
 #### Widget Parameters
 
-- `objectId`: SAYMON object identifier
+- `objectId`: SAYMON object identifier (default for metrics without object ID)
 - `metrics`: Comma-separated metric names
+  - Standard format: `metricName` (uses default object ID)
+  - Object-specific format: `{{objectId:metricName}}` (uses specified object ID)
 - `chartType`: `line`, `bar`, or `dots`
 - `period`: `hour`, `day`, `week`, or `month`
 - `authToken`: Authentication token (optional)
