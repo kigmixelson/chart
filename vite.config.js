@@ -9,11 +9,7 @@ export default defineConfig({
         widget: './widget.html',
         standalone: './standalone.html',
         build: './build.js'
-      },
-      external: [
-        'd3.v7.min.js',
-        '/d3.v7.min.js'
-      ]
+      }
     }
   },
   css: {
