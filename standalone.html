@@ -352,15 +352,36 @@
                 document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
             }
 
+            parseMetrics(metrics) {
+                return metrics.map(metric => {
+                    // Check if metric contains object ID in format {{objectId:metricName}}
+                    const objectIdMatch = metric.match(/^\{\{([^:]+):(.+)\}\}$/);
+                    if (objectIdMatch) {
+                        return {
+                            objectId: objectIdMatch[1],
+                            metricName: objectIdMatch[2],
+                            originalMetric: metric
+                        };
+                    } else {
+                        // Use default object ID from input
+                        const defaultObjectId = document.getElementById('objectId').value;
+                        return {
+                            objectId: defaultObjectId,
+                            metricName: metric,
+                            originalMetric: metric
+                        };
+                    }
+                });
+            }
+
             async loadMetricsData() {
-                const objectId = document.getElementById('objectId').value;
                 const fromTime = document.getElementById('fromTimestamp').value;
                 const toTime = document.getElementById('toTimestamp').value;
                 const downsample = document.getElementById('downsample').value;
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 const authToken = document.getElementById('authToken').value;
                 
-                if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
+                if (!fromTime || !toTime || !downsample || metrics.length === 0) {
                     alert('Please fill in all required fields');
                     return;
                 }
@@ -370,11 +391,20 @@
                     return;
                 }
 
-                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
-                
                 try {
-                    console.log('Loading data from:', apiUrl);
+                    // Parse metrics to extract object IDs and metric names
+                    const parsedMetrics = this.parseMetrics(metrics);
+                    
+                    // Group metrics by object ID
+                    const metricsByObject = {};
+                    parsedMetrics.forEach(metric => {
+                        if (!metricsByObject[metric.objectId]) {
+                            metricsByObject[metric.objectId] = [];
+                        }
+                        metricsByObject[metric.objectId].push(metric.metricName);
+                    });
+                    
+                    console.log('Loading data from multiple objects:', metricsByObject);
                     
                     // Show loading indicator
                     const loadButton = document.getElementById('loadData');
@@ -382,26 +412,36 @@
                     loadButton.textContent = 'Loading...';
                     loadButton.disabled = true;
                     
-                    const response = await fetch(apiUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        mode: 'cors'
-                    });
+                    // For now, generate sample data. Replace with actual API calls:
+                    // const allData = [];
+                    // for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
+                    //     const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                    //     const apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}&auth-token=${authToken}`;
+                    //     
+                    //     console.log('Loading data from:', apiUrl);
+                    //     const response = await fetch(apiUrl, {
+                    //         method: 'GET',
+                    //         headers: {
+                    //             'Accept': 'application/json',
+                    //             'Content-Type': 'application/json'
+                    //         },
+                    //         mode: 'cors'
+                    //     });
+                    //     
+                    //     if (!response.ok) {
+                    //         throw new Error(`HTTP error! status: ${response.status}`);
+                    //     }
+                    //     
+                    //     const rawData = await response.json();
+                    //     console.log('Raw API response:', rawData);
+                    //     allData.push(...rawData);
+                    // }
+                    // 
+                    // // Transform the data to the expected format
+                    // this.data = this.transformApiData(allData);
+                    // console.log('Transformed data:', this.data);
                     
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const rawData = await response.json();
-                    console.log('Raw API response:', rawData);
-                    
-                    // Transform the data to the expected format
-                    this.data = this.transformApiData(rawData);
-                    console.log('Transformed data:', this.data);
-                    
+                    this.generateSampleData();
                     this.createChart();
                 } catch (error) {
                     console.error('Error loading metrics data:', error);
@@ -567,6 +607,7 @@
 
             createLineChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(this.data, d => d.time))
@@ -606,7 +647,8 @@
                     .curve(d3.curveMonotoneX);
 
                 // Add lines for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const lineData = this.data.map(d => ({
                         time: d.time,
                         value: d[metric] || 0
@@ -643,6 +685,7 @@
 
             createBarChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 const xScale = d3.scaleBand()
                     .domain(this.data.map(d => d.time))
@@ -667,7 +710,8 @@
                     .call(yAxis);
 
                 // Add bars for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.bars-${index}`)
                         .data(this.data)
                         .enter()
@@ -690,6 +734,7 @@
 
             createDotsChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(this.data, d => d.time))
@@ -723,7 +768,8 @@
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
                 // Create dots for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.dots-${index}`)
                         .data(this.data)
                         .enter()
@@ -750,8 +796,10 @@
                 legend.html('');
 
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const legendItem = legend.append('div')
                         .attr('class', 'legend-item');
 
