@@ -352,6 +352,64 @@
                 }
             }
 
+            generateSampleData() {
+                // Generate sample data for demonstration
+                this.data = [];
+                const fromTime = parseInt(this.config.fromTimestamp);
+                const toTime = parseInt(this.config.toTimestamp);
+                const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
+                
+                const timeStep = (toTime - fromTime) / 50; // 50 data points for more detail
+                
+                // Generate counter data with realistic patterns
+                let currentValues = {};
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
+                    currentValues[metric] = Math.random() * 10000 + 1000; // Higher starting values
+                });
+                
+                for (let i = 0; i < 50; i++) {
+                    const timestamp = fromTime + (i * timeStep);
+                    const dataPoint = {
+                        timestamp: timestamp,
+                        time: new Date(timestamp)
+                    };
+                    
+                    parsedMetrics.forEach((parsedMetric, index) => {
+                        const metric = parsedMetric.metricName;
+                        // Simulate realistic data with varying intensity
+                        let increment;
+                        if (i < 10) {
+                            // Low activity period
+                            increment = Math.random() * 100 + 50;
+                        } else if (i < 20) {
+                            // Medium activity period
+                            increment = Math.random() * 300 + 200;
+                        } else if (i < 35) {
+                            // High activity period (peak)
+                            increment = Math.random() * 800 + 500;
+                        } else if (i < 45) {
+                            // Medium activity period
+                            increment = Math.random() * 300 + 200;
+                        } else {
+                            // Low activity period
+                            increment = Math.random() * 100 + 50;
+                        }
+                        
+                        // Add some random spikes
+                        if (Math.random() < 0.1) { // 10% chance of spike
+                            increment *= 2;
+                        }
+                        
+                        currentValues[metric] += increment;
+                        dataPoint[metric] = currentValues[metric];
+                    });
+                    
+                    this.data.push(dataPoint);
+                }
+            }
+
             parseMetrics(metrics) {
                 return metrics.map(metric => {
                     // Check if metric contains object ID in format {{objectId:metricName}}
