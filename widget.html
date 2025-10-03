@@ -319,7 +319,12 @@
                     const allData = [];
                     for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
                         const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                        let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
+                        
+                        // Use extended timestamp for API calls when forecast mode is enabled
+                        const apiFromTimestamp = this.config.fromTimestamp;
+                        const apiToTimestamp = this.config.toTimestamp; // This already includes forecast extension
+                        
+                        let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${apiFromTimestamp}&to=${apiToTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
                         
                         // Add auth token if provided
                         if (this.config.authToken) {
@@ -327,6 +332,7 @@
                         }
                         
                         console.log('Loading data from:', apiUrl);
+                        console.log(`API time range: ${new Date(parseInt(apiFromTimestamp)).toISOString()} to ${new Date(parseInt(apiToTimestamp)).toISOString()}`);
                         const response = await fetch(apiUrl, {
                             method: 'GET',
                             headers: {
