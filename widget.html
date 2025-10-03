@@ -491,7 +491,7 @@
                 const parsedMetrics = this.parseMetrics(metrics);
                 
                 return data.filter(dataPoint => {
-                    // Check if any metric has a non-zero value
+                    // Check if any metric has a non-zero value (keep data points with at least one non-zero metric)
                     return parsedMetrics.some(parsedMetric => {
                         const metric = parsedMetric.metricName;
                         const value = this.getMetricValue(dataPoint, metric);
@@ -758,13 +758,18 @@
                 // Add lines for each metric
                 parsedMetrics.forEach((parsedMetric, index) => {
                     const metric = parsedMetric.metricName;
-                    const lineData = chartData.map(d => ({
+                    let lineData = chartData.map(d => ({
                         time: d.time,
                         value: this.getMetricValue(d, metric),
                         counterValue: d[metric] || 0,
                         rateValue: d[`${metric}_diff`] || 0,
                         speedValue: d[`${metric}_speed`] || 0
                     }));
+                    
+                    // Filter out zero values for this specific metric if skipzero is enabled
+                    if (this.config.skipzero) {
+                        lineData = lineData.filter(d => d.value !== 0 && d.value !== null && d.value !== undefined);
+                    }
 
                     chartGroup.append('path')
                         .datum(lineData)
@@ -860,8 +865,18 @@
                 // Add bars for each metric
                 parsedMetrics.forEach((parsedMetric, index) => {
                     const metric = parsedMetric.metricName;
+                    
+                    // Filter out zero values for this specific metric if skipzero is enabled
+                    let metricData = chartData;
+                    if (this.config.skipzero) {
+                        metricData = chartData.filter(d => {
+                            const value = this.getMetricValue(d, metric);
+                            return value !== 0 && value !== null && value !== undefined;
+                        });
+                    }
+                    
                     chartGroup.selectAll(`.bars-${index}`)
-                        .data(chartData)
+                        .data(metricData)
                         .enter()
                         .append('rect')
                         .attr('class', `bar bars-${index}`)
@@ -953,8 +968,18 @@
                 // Create dots for each metric
                 parsedMetrics.forEach((parsedMetric, index) => {
                     const metric = parsedMetric.metricName;
+                    
+                    // Filter out zero values for this specific metric if skipzero is enabled
+                    let metricData = chartData;
+                    if (this.config.skipzero) {
+                        metricData = chartData.filter(d => {
+                            const value = this.getMetricValue(d, metric);
+                            return value !== 0 && value !== null && value !== undefined;
+                        });
+                    }
+                    
                     chartGroup.selectAll(`.dots-${index}`)
-                        .data(chartData)
+                        .data(metricData)
                         .enter()
                         .append('circle')
                         .attr('class', `dot dots-${index}`)
