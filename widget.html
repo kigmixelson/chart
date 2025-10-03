@@ -315,39 +315,43 @@
                     
                     console.log('Loading data from multiple objects:', metricsByObject);
                     
-                    // For now, generate sample data. Replace with actual API calls:
-                    // const allData = [];
-                    // for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
-                    //     const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                    //     let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
-                    //     
-                    //     // Add auth token if provided
-                    //     if (this.config.authToken) {
-                    //         apiUrl += `&auth-token=${this.config.authToken}`;
-                    //     }
-                    //     
-                    //     console.log('Loading data from:', apiUrl);
-                    //     const response = await fetch(apiUrl, {
-                    //         method: 'GET',
-                    //         headers: {
-                    //             'Accept': 'application/json',
-                    //             'Content-Type': 'application/json'
-                    //         },
-                    //         mode: 'cors'
-                    //     });
-                    //     
-                    //     if (!response.ok) {
-                    //         console.error(`HTTP error! status: ${response.status}`);
-                    //         this.showError('Data source is not selected or load failed');
-                    //         return;
-                    //     }
-                    //     
-                    //     const objectData = await response.json();
-                    //     allData.push(...objectData);
-                    // }
-                    // this.data = this.transformApiData(allData);
+                    // Load data from API
+                    const allData = [];
+                    for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
+                        const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                        let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
+                        
+                        // Add auth token if provided
+                        if (this.config.authToken) {
+                            apiUrl += `&auth-token=${this.config.authToken}`;
+                        }
+                        
+                        console.log('Loading data from:', apiUrl);
+                        const response = await fetch(apiUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            mode: 'cors'
+                        });
+                        
+                        if (!response.ok) {
+                            console.error(`HTTP error! status: ${response.status}`);
+                            this.showError('Data source is not selected or load failed');
+                            return;
+                        }
+                        
+                        const objectData = await response.json();
+                        allData.push(...objectData);
+                    }
+                    this.data = this.transformApiData(allData);
                     
-                    this.generateSampleData();
+                    // Fallback to sample data if no real data available
+                    if (this.data.length === 0) {
+                        console.log('No real data available, using sample data');
+                        this.generateSampleData();
+                    }
                     
                     // Only proceed if we have data
                     if (this.data.length > 0) {
