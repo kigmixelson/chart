@@ -154,12 +154,14 @@
                 const fromTime = parseInt(document.getElementById('fromTimestamp').value);
                 const toTime = parseInt(document.getElementById('toTimestamp').value);
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 const timeStep = (toTime - fromTime) / 50; // 50 data points for more detail
                 
                 // Generate counter data with realistic network traffic patterns
                 let currentValues = {};
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     currentValues[metric] = Math.random() * 10000 + 1000; // Higher starting values
                 });
                 
@@ -170,7 +172,8 @@
                         time: new Date(timestamp)
                     };
                     
-                    metrics.forEach((metric, index) => {
+                    parsedMetrics.forEach((parsedMetric, index) => {
+                        const metric = parsedMetric.metricName;
                         // Simulate realistic network traffic with varying intensity
                         let increment;
                         if (i < 10) {
@@ -205,9 +208,11 @@
 
             calculateDifferences() {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Calculate differences between neighboring values for each metric
-                metrics.forEach(metric => {
+                parsedMetrics.forEach(parsedMetric => {
+                    const metric = parsedMetric.metricName;
                     for (let i = 1; i < this.data.length; i++) {
                         const currentValue = this.data[i][metric] || 0;
                         const previousValue = this.data[i-1][metric] || 0;
@@ -331,32 +336,86 @@
                 const downsample = document.getElementById('downsample').value;
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 
-                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+                // Parse metrics to extract object IDs and metric names
+                const parsedMetrics = this.parseMetrics(metrics);
                 
-                document.getElementById('apiUrl').innerHTML = `<code>${apiUrl}</code>`;
+                // Group metrics by object ID
+                const metricsByObject = {};
+                parsedMetrics.forEach(metric => {
+                    if (!metricsByObject[metric.objectId]) {
+                        metricsByObject[metric.objectId] = [];
+                    }
+                    metricsByObject[metric.objectId].push(metric.metricName);
+                });
+                
+                // Generate API URLs for each object
+                const apiUrls = Object.keys(metricsByObject).map(objId => {
+                    const objectMetrics = metricsByObject[objId];
+                    const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                    return `/node/api/objects/${objId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+                });
+                
+                document.getElementById('apiUrl').innerHTML = `<code>${apiUrls.join('<br>')}</code>`;
+            }
+
+            parseMetrics(metrics) {
+                return metrics.map(metric => {
+                    // Check if metric contains object ID in format {{objectId:metricName}}
+                    const objectIdMatch = metric.match(/^\{\{([^:]+):(.+)\}\}$/);
+                    if (objectIdMatch) {
+                        return {
+                            objectId: objectIdMatch[1],
+                            metricName: objectIdMatch[2],
+                            originalMetric: metric
+                        };
+                    } else {
+                        // Use default object ID from input
+                        const defaultObjectId = document.getElementById('objectId').value;
+                        return {
+                            objectId: defaultObjectId,
+                            metricName: metric,
+                            originalMetric: metric
+                        };
+                    }
+                });
             }
 
             async loadMetricsData() {
-                const objectId = document.getElementById('objectId').value;
                 const fromTime = document.getElementById('fromTimestamp').value;
                 const toTime = document.getElementById('toTimestamp').value;
                 const downsample = document.getElementById('downsample').value;
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
                 
-                if (!objectId || !fromTime || !toTime || !downsample || metrics.length === 0) {
+                if (!fromTime || !toTime || !downsample || metrics.length === 0) {
                     alert('Please fill in all required fields');
                     return;
                 }
 
-                const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
-                const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
-                
                 try {
-                    console.log('Loading data from:', apiUrl);
-                    // For now, generate sample data. Replace with actual API call:
-                    // const response = await fetch(apiUrl);
-                    // this.data = await response.json();
+                    // Parse metrics to extract object IDs and metric names
+                    const parsedMetrics = this.parseMetrics(metrics);
+                    
+                    // Group metrics by object ID
+                    const metricsByObject = {};
+                    parsedMetrics.forEach(metric => {
+                        if (!metricsByObject[metric.objectId]) {
+                            metricsByObject[metric.objectId] = [];
+                        }
+                        metricsByObject[metric.objectId].push(metric.metricName);
+                    });
+                    
+                    console.log('Loading data from multiple objects:', metricsByObject);
+                    
+                    // For now, generate sample data. Replace with actual API calls:
+                    // const allData = [];
+                    // for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
+                    //     const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                    //     const apiUrl = `/node/api/objects/${objectId}/history?from=${fromTime}&to=${toTime}&downsample=${downsample}&${metricsParams}`;
+                    //     const response = await fetch(apiUrl);
+                    //     const objectData = await response.json();
+                    //     allData.push(...objectData);
+                    // }
+                    // this.data = this.transformApiData(allData);
                     
                     this.generateSampleData();
                     this.calculateDifferences();
@@ -400,6 +459,7 @@
 
             createLineChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 const dataType = document.getElementById('dataType').value;
                 
                 // Filter data to remove first point when showing differences
@@ -458,7 +518,8 @@
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
                 // Create lines for each metric using appropriate values
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const line = d3.line()
                         .x(d => xScale(d.time))
                         .y(d => yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
@@ -492,6 +553,7 @@
 
             createBarChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 const dataType = document.getElementById('dataType').value;
                 
                 // Filter data to remove first point when showing differences
@@ -545,7 +607,8 @@
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
                 // Add bars for each metric using appropriate values
-                metrics.forEach((metric, metricIndex) => {
+                parsedMetrics.forEach((parsedMetric, metricIndex) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.bar-${metricIndex}`)
                         .data(chartData)
                         .enter()
@@ -564,6 +627,7 @@
 
             createDotsChart(chartGroup, width, height) {
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(this.data, d => d.time))
@@ -597,7 +661,8 @@
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
                 // Create dots for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.dot-${index}`)
                         .data(this.data)
                         .enter()
@@ -641,9 +706,11 @@
                 legend.html('');
 
                 const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 const dataType = document.getElementById('dataType').value;
                 
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const label = dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`;
                     legend.append('div')
                         .attr('class', 'legend-item')
