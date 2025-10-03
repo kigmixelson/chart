@@ -488,8 +488,10 @@
 
                 if (this.config.chartType === 'line') {
                     this.createLineChart(chartGroup, chartWidth, chartHeight);
-                } else {
+                } else if (this.config.chartType === 'bar') {
                     this.createBarChart(chartGroup, chartWidth, chartHeight);
+                } else if (this.config.chartType === 'dots') {
+                    this.createDotsChart(chartGroup, chartWidth, chartHeight);
                 }
 
                 this.createLegend();
@@ -675,6 +677,93 @@
                         .attr('height', d => height - yScale(this.getMetricValue(d, metric)))
                         .attr('fill', this.color(index))
                         .attr('opacity', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? 0.9 : 0.8)
+                        .on('mouseover', (event, d) => {
+                            this.showTooltip(event, d, metric);
+                        })
+                        .on('mouseout', () => {
+                            this.hideTooltip();
+                        });
+                });
+            }
+
+            createDotsChart(chartGroup, width, height) {
+                const metrics = this.config.metrics.split(',').map(m => m.trim());
+                
+                // Filter data to remove first point when showing differences or speed
+                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                
+                const xScale = d3.scaleTime()
+                    .domain(d3.extent(chartData, d => d.time))
+                    .range([0, width]);
+
+                // Use appropriate values for Y scale based on data type with 10% padding
+                const allValues = chartData.flatMap(d => 
+                    metrics.map(m => {
+                        if (this.config.dataType === 'diff') return d[`${m}_diff`] || 0;
+                        if (this.config.dataType === 'speed') return d[`${m}_speed`] || 0;
+                        return d[m] || 0;
+                    })
+                );
+                const minValue = d3.min(allValues);
+                const maxValue = d3.max(allValues);
+                const dataRange = maxValue - minValue;
+                const padding = dataRange * 0.1; // 10% of data variation
+                
+                const yScale = d3.scaleLinear()
+                    .domain([minValue - padding, maxValue + padding])
+                    .range([height, 0]);
+
+                // Calculate number of ticks based on chart width
+                const xTicks = Math.max(2, Math.min(8, Math.floor(width / 80))); // 2-8 ticks based on width
+                const yTicks = Math.max(3, Math.min(6, Math.floor(height / 60))); // 3-6 ticks based on height
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale)
+                    .ticks(xTicks)
+                    .tickFormat(this.getTimeFormat());
+                
+                const yAxis = d3.axisLeft(yScale)
+                    .tickFormat(d => {
+                        if (d >= Math.pow(1024, 3)) return d3.format('.1f')(d / Math.pow(1024, 3)) + 'G';
+                        if (d >= Math.pow(1024, 2)) return d3.format('.1f')(d / Math.pow(1024, 2)) + 'M';
+                        if (d >= 1024) return d3.format('.1f')(d / 1024) + 'K';
+                        return d3.format(',.0f')(d);
+                    })
+                    .ticks(yTicks);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add grid
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Create dots for each metric
+                metrics.forEach((metric, index) => {
+                    chartGroup.selectAll(`.dots-${index}`)
+                        .data(chartData)
+                        .enter()
+                        .append('circle')
+                        .attr('class', `dot dots-${index}`)
+                        .attr('cx', d => xScale(d.time))
+                        .attr('cy', d => yScale(this.getMetricValue(d, metric)))
+                        .attr('r', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.pointSize + 2 : this.pointSize + 1) // Slightly larger dots for better visibility
+                        .attr('fill', this.color(index))
+                        .attr('stroke', 'white')
+                        .attr('stroke-width', 1)
+                        .attr('opacity', 0.8)
                         .on('mouseover', (event, d) => {
                             this.showTooltip(event, d, metric);
                         })
