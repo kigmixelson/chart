@@ -92,6 +92,7 @@
                             <select id="chartType">
                                 <option value="line">Line Chart</option>
                                 <option value="bar">Bar Chart</option>
+                                <option value="dots">Dots Chart</option>
                             </select>
                         </div>
                         
@@ -389,6 +390,9 @@
                     case 'bar':
                         this.createBarChart(chartGroup, chartWidth, chartHeight);
                         break;
+                    case 'dots':
+                        this.createDotsChart(chartGroup, chartWidth, chartHeight);
+                        break;
                 }
 
                 this.createLegend();
@@ -553,6 +557,59 @@
                         .attr('height', d => height - yScale(dataType === 'diff' ? (d[`${metric}_diff`] || 0) : (d[metric] || 0)))
                         .attr('fill', this.color(metricIndex))
                         .style('opacity', dataType === 'diff' ? 0.8 : 0.6)
+                        .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
+                        .on('mouseout', () => this.hideTooltip());
+                });
+            }
+
+            createDotsChart(chartGroup, width, height) {
+                const metrics = document.getElementById('metrics').value.split(',').map(m => m.trim());
+                
+                const xScale = d3.scaleTime()
+                    .domain(d3.extent(this.data, d => d.time))
+                    .range([0, width]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(this.data, d => Math.max(...metrics.map(m => d[m] || 0)))])
+                    .range([height, 0]);
+
+                // Add axes
+                const xAxis = d3.axisBottom(xScale);
+                const yAxis = d3.axisLeft(yScale);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                chartGroup.append('g')
+                    .attr('class', 'axis')
+                    .call(yAxis);
+
+                // Add grid
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+
+                chartGroup.append('g')
+                    .attr('class', 'grid')
+                    .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Create dots for each metric
+                metrics.forEach((metric, index) => {
+                    chartGroup.selectAll(`.dot-${index}`)
+                        .data(this.data)
+                        .enter()
+                        .append('circle')
+                        .attr('class', `dot dot-${index}`)
+                        .attr('cx', d => xScale(d.time))
+                        .attr('cy', d => yScale(d[metric] || 0))
+                        .attr('r', this.pointSize + 2) // Slightly larger dots for better visibility
+                        .attr('fill', this.color(index))
+                        .attr('stroke', 'white')
+                        .attr('stroke-width', 2)
+                        .attr('opacity', 0.8)
                         .on('mouseover', (event, d) => this.showTooltip(event, d, metric))
                         .on('mouseout', () => this.hideTooltip());
                 });
