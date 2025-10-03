@@ -285,45 +285,52 @@
                     }
 
                     const metrics = this.config.metrics.split(',').map(m => m.trim());
-                    const metricsParams = metrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                    const parsedMetrics = this.parseMetrics(metrics);
                     
-                    // Build API URL with optional auth token
-                    let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${this.config.objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
-                    
-                    // Add auth token if provided
-                    if (this.config.authToken) {
-                        apiUrl += `&auth-token=${this.config.authToken}`;
-                    }
-                    
-                    console.log('Loading data from:', apiUrl);
-                    
-                    const response = await fetch(apiUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        mode: 'cors'
+                    // Group metrics by object ID
+                    const metricsByObject = {};
+                    parsedMetrics.forEach(metric => {
+                        if (!metricsByObject[metric.objectId]) {
+                            metricsByObject[metric.objectId] = [];
+                        }
+                        metricsByObject[metric.objectId].push(metric.metricName);
                     });
                     
-                    if (!response.ok) {
-                        console.error(`HTTP error! status: ${response.status}`);
-                        this.showError('Data source is not selected or load failed');
-                        return;
-                    }
+                    console.log('Loading data from multiple objects:', metricsByObject);
                     
-                    let rawData;
-                    try {
-                        rawData = await response.json();
-                        console.log('Raw API response:', rawData);
-                    } catch (jsonError) {
-                        console.error('Error parsing JSON response:', jsonError);
-                        this.showError('Data source is not selected or load failed');
-                        return;
-                    }
+                    // For now, generate sample data. Replace with actual API calls:
+                    // const allData = [];
+                    // for (const [objectId, objectMetrics] of Object.entries(metricsByObject)) {
+                    //     const metricsParams = objectMetrics.map(metric => `metrics%5B%5D=${encodeURIComponent(metric)}`).join('&');
+                    //     let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${this.config.fromTimestamp}&to=${this.config.toTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
+                    //     
+                    //     // Add auth token if provided
+                    //     if (this.config.authToken) {
+                    //         apiUrl += `&auth-token=${this.config.authToken}`;
+                    //     }
+                    //     
+                    //     console.log('Loading data from:', apiUrl);
+                    //     const response = await fetch(apiUrl, {
+                    //         method: 'GET',
+                    //         headers: {
+                    //             'Accept': 'application/json',
+                    //             'Content-Type': 'application/json'
+                    //         },
+                    //         mode: 'cors'
+                    //     });
+                    //     
+                    //     if (!response.ok) {
+                    //         console.error(`HTTP error! status: ${response.status}`);
+                    //         this.showError('Data source is not selected or load failed');
+                    //         return;
+                    //     }
+                    //     
+                    //     const objectData = await response.json();
+                    //     allData.push(...objectData);
+                    // }
+                    // this.data = this.transformApiData(allData);
                     
-                    this.data = this.transformApiData(rawData);
-                    console.log('Transformed data:', this.data);
+                    this.generateSampleData();
                     
                     // Only proceed if we have data
                     if (this.data.length > 0) {
@@ -343,6 +350,27 @@
                     console.error('Error loading metrics data:', error);
                     this.showError('Data source is not selected or load failed');
                 }
+            }
+
+            parseMetrics(metrics) {
+                return metrics.map(metric => {
+                    // Check if metric contains object ID in format {{objectId:metricName}}
+                    const objectIdMatch = metric.match(/^\{\{([^:]+):(.+)\}\}$/);
+                    if (objectIdMatch) {
+                        return {
+                            objectId: objectIdMatch[1],
+                            metricName: objectIdMatch[2],
+                            originalMetric: metric
+                        };
+                    } else {
+                        // Use default object ID from config
+                        return {
+                            objectId: this.config.objectId,
+                            metricName: metric,
+                            originalMetric: metric
+                        };
+                    }
+                });
             }
 
             transformApiData(rawData) {
@@ -392,9 +420,11 @@
 
             calculateDifferences() {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Calculate differences between neighboring values for each metric
-                metrics.forEach(metric => {
+                parsedMetrics.forEach(parsedMetric => {
+                    const metric = parsedMetric.metricName;
                     for (let i = 1; i < this.data.length; i++) {
                         const currentValue = this.data[i][metric] || 0;
                         const previousValue = this.data[i-1][metric] || 0;
@@ -433,12 +463,14 @@
 
             calculateSpeed() {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // First calculate differences
                 this.calculateDifferences();
                 
                 // Then calculate speed (difference per unit time)
-                metrics.forEach(metric => {
+                parsedMetrics.forEach(parsedMetric => {
+                    const metric = parsedMetric.metricName;
                     for (let i = 1; i < this.data.length; i++) {
                         const currentTime = this.data[i].timestamp;
                         const previousTime = this.data[i-1].timestamp;
@@ -499,6 +531,7 @@
 
             createLineChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
                 const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
@@ -570,7 +603,8 @@
                     .curve(d3.curveLinear);
 
                 // Add lines for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const lineData = chartData.map(d => ({
                         time: d.time,
                         value: this.getMetricValue(d, metric),
@@ -610,6 +644,7 @@
 
             createBarChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
                 const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
@@ -665,7 +700,8 @@
                     .call(yAxis);
 
                 // Add bars for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.bars-${index}`)
                         .data(chartData)
                         .enter()
@@ -688,6 +724,7 @@
 
             createDotsChart(chartGroup, width, height) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
                 const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
@@ -751,7 +788,8 @@
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
                 // Create dots for each metric
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     chartGroup.selectAll(`.dots-${index}`)
                         .data(chartData)
                         .enter()
@@ -778,6 +816,7 @@
                 legend.html('');
 
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
+                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Add chart title first - use custom name if provided, otherwise default
                 let titleText;
@@ -793,7 +832,8 @@
                     .text(titleText + periodText);
                 
                 // Add metrics
-                metrics.forEach((metric, index) => {
+                parsedMetrics.forEach((parsedMetric, index) => {
+                    const metric = parsedMetric.metricName;
                     const legendItem = legend.append('div')
                         .attr('class', 'legend-item');
 
