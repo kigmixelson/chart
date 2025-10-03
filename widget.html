@@ -295,7 +295,7 @@
                 try {
                     // Recalculate time range if using period (for auto-reload)
                     if (this.config.period) {
-                        const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(this.config.period);
+                        const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(this.config.period, this.config.forecast);
                         this.config.fromTimestamp = fromTimestamp;
                         this.config.toTimestamp = toTimestamp;
                         this.config.downsample = downsample;
