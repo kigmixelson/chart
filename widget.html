@@ -225,8 +225,12 @@
                 if (forecast) {
                     const timeRange = toTimestamp - fromTimestamp;
                     const forecastExtension = timeRange * 0.3; // 30% extension
+                    const originalToTimestamp = toTimestamp;
                     toTimestamp = toTimestamp + forecastExtension;
                     console.log(`Forecast mode enabled: extending time range by 30% (${Math.round(forecastExtension / (60 * 1000))} minutes)`);
+                    console.log(`Original toTimestamp: ${new Date(originalToTimestamp).toISOString()}`);
+                    console.log(`Extended toTimestamp: ${new Date(toTimestamp).toISOString()}`);
+                    console.log(`Forecast extension: ${Math.round(forecastExtension / (60 * 1000))} minutes into the future`);
                 }
 
                 console.log(`Period "${period}": from ${new Date(fromTimestamp).toISOString()} to ${new Date(toTimestamp).toISOString()}, downsample: ${downsample}`);
