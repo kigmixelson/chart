@@ -6,7 +6,7 @@ A web-based chart application for visualizing metrics data from the SAYMON monit
 ## Features
 
 - **Real-time Data Fetching**: Connects to the SAYMON API to fetch actual metrics data
-- **Interactive Charts**: Line and bar chart visualizations using D3.js
+- **Interactive Charts**: Line, bar, and dots chart visualizations using D3.js
 - **Configurable Parameters**: Customize object ID, time range, metrics, and downsample settings
 - **Authentication**: Secure API access using authentication tokens
 - **Responsive Design**: Works on desktop and mobile devices
@@ -62,11 +62,30 @@ https://bccdemo.cpult.ru/node/api/objects/{objectId}/history
 - `metrics[]`: Array of metric names
 - `auth-token`: Authentication token
 
+## Chart Types
+
+The application supports three different chart types:
+
+### Line Chart
+- **Best for**: Time series data with trends and patterns
+- **Features**: Connected data points with smooth curves
+- **Use case**: Network traffic, system performance over time
+
+### Bar Chart  
+- **Best for**: Comparing values across time periods
+- **Features**: Vertical bars for each data point
+- **Use case**: Daily/weekly summaries, comparative analysis
+
+### Dots Chart (Scatter Plot)
+- **Best for**: Individual data points and correlation analysis
+- **Features**: Scatter plot with individual data points
+- **Use case**: Spot analysis, outlier detection, data distribution
+
 ## Usage
 
 1. **Test API Connection**: Click "Test API Connection" to verify your settings
 2. **Load Data**: Click "Load Metrics Data" to fetch and display the chart
-3. **Switch Chart Types**: Use the dropdown to switch between line and bar charts
+3. **Switch Chart Types**: Use the dropdown to switch between line, bar, and dots charts
 4. **Adjust Time Range**: Use the time range selector for quick time period changes
 
 ## Troubleshooting
@@ -96,11 +115,20 @@ If you encounter CORS errors, you may need to:
 
 ```
 chart/
-├── index.html          # Main HTML file
-├── main.js            # Chart application logic
+├── index.html          # Main application with full UI
+├── widget.html         # Embeddable widget version
+├── standalone.html     # Standalone version with API testing
+├── main.js            # Chart application logic (for build)
 ├── style.css          # Main stylesheet
+├── index-Qi_VvB8y.css # Additional stylesheet for compatibility
+├── build.js           # Build entry point for CSS processing
 ├── package.json       # Dependencies and scripts
-└── vite.config.js     # Vite configuration
+├── vite.config.js     # Vite configuration
+└── dist/              # Built files (created after build)
+    ├── index.html
+    ├── widget.html
+    ├── standalone.html
+    └── style.css
 ```
 
 ### Key Dependencies
@@ -127,6 +155,54 @@ Both methods will create a `dist/` directory with all the necessary files:
 - `standalone.html` - Standalone version
 - All CSS and JavaScript files
 - Documentation files
+
+## Application Versions
+
+The project includes three different versions of the chart application:
+
+### Main Application (`index.html`)
+- **Full UI**: Complete interface with configuration panels
+- **Interactive Controls**: Time range selector, chart type switcher
+- **Real-time Updates**: API URL generation and data loading
+- **Best for**: Development, testing, and full-featured usage
+
+### Widget (`widget.html`)
+- **Embeddable**: Designed for embedding in other applications
+- **URL Parameters**: Configure via URL parameters
+- **Auto-reload**: Automatic data refresh based on time period
+- **Best for**: Dashboard integration, monitoring displays
+
+### Standalone (`standalone.html`)
+- **API Testing**: Built-in API connection testing
+- **Authentication**: Full authentication token support
+- **CORS Handling**: Built-in CORS error handling
+- **Best for**: Standalone usage, API debugging
+
+### Widget Usage Examples
+
+The widget can be embedded using URL parameters:
+
+```html
+<!-- Line chart for last day -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=line&period=day"></iframe>
+
+<!-- Bar chart for last week -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=bar&period=week"></iframe>
+
+<!-- Dots chart for last hour -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=dots&period=hour"></iframe>
+```
+
+#### Widget Parameters
+
+- `objectId`: SAYMON object identifier
+- `metrics`: Comma-separated metric names
+- `chartType`: `line`, `bar`, or `dots`
+- `period`: `hour`, `day`, `week`, or `month`
+- `authToken`: Authentication token (optional)
+- `width`: Widget width in pixels (optional)
+- `height`: Widget height in pixels (optional)
+- `name`: Custom chart title (optional)
 
 ## API Response Format
 
