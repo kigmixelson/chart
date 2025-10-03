@@ -682,7 +682,12 @@
                 const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
-                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                let chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                
+                // Apply zero value filtering if skipzero is enabled
+                if (this.config.skipzero) {
+                    chartData = this.filterZeroValues(chartData);
+                }
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(chartData, d => d.time))
@@ -795,7 +800,12 @@
                 const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
-                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                let chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                
+                // Apply zero value filtering if skipzero is enabled
+                if (this.config.skipzero) {
+                    chartData = this.filterZeroValues(chartData);
+                }
                 
                 const xScale = d3.scaleBand()
                     .domain(chartData.map(d => d.time))
@@ -875,7 +885,12 @@
                 const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Filter data to remove first point when showing differences or speed
-                const chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                let chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                
+                // Apply zero value filtering if skipzero is enabled
+                if (this.config.skipzero) {
+                    chartData = this.filterZeroValues(chartData);
+                }
                 
                 const xScale = d3.scaleTime()
                     .domain(d3.extent(chartData, d => d.time))
