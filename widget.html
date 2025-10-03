@@ -134,8 +134,11 @@
                 const divider = dividerParam ? parseFloat(dividerParam) : null;
                 
                 if (period) {
+                    // First set up basic config to get forecast parameter
+                    const forecast = urlParams.get('forecast') === 'true';
+                    
                     // Calculate time range and downsample based on period
-                    const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(period);
+                    const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(period, forecast);
                     
                     this.config = {
                         objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
@@ -151,7 +154,7 @@
                         period: period,
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
-                        forecast: urlParams.get('forecast') === 'true' // Forecast mode parameter
+                        forecast: forecast // Forecast mode parameter
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -185,7 +188,7 @@
                 this.setupAutoReload();
             }
 
-            calculateTimeRange(period) {
+            calculateTimeRange(period, forecast = false) {
                 const now = Date.now();
                 let fromTimestamp, toTimestamp, downsample;
 
@@ -219,7 +222,7 @@
                 }
 
                 // Apply forecast mode: extend time range by 30% if forecast is enabled
-                if (this.config.forecast) {
+                if (forecast) {
                     const timeRange = toTimestamp - fromTimestamp;
                     const forecastExtension = timeRange * 0.3; // 30% extension
                     toTimestamp = toTimestamp + forecastExtension;
