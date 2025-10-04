@@ -392,9 +392,6 @@
                 }
             }
                     
-                    // Check if this is forecast data (beyond original time range)
-                    const isForecastData = this.config.forecast && timestamp > originalToTime;
-                    
                     parsedMetrics.forEach((parsedMetric, index) => {
                         const metric = parsedMetric.metricName;
                         
