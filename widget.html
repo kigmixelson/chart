@@ -391,22 +391,6 @@
                     this.showError('Data source is not selected or load failed');
                 }
             }
-
-                
-                // Calculate the original time range (without forecast extension)
-                const originalTimeRange = this.config.forecast ? (toTime - fromTime) / 1.3 : (toTime - fromTime);
-                const originalToTime = fromTime + originalTimeRange;
-                
-                const timeStep = (toTime - fromTime) / 50; // 50 data points for more detail
-                
-                // Generate counter data with realistic patterns
-                let currentValues = {};
-                parsedMetrics.forEach((parsedMetric, index) => {
-                    const metric = parsedMetric.metricName;
-                    currentValues[metric] = Math.random() * 10000 + 1000; // Higher starting values
-                });
-                
-                for (let i = 0; i < 50; i++) {
                     const timestamp = fromTime + (i * timeStep);
                     const dataPoint = {
                         timestamp: timestamp,
