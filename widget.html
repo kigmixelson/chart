@@ -365,18 +365,11 @@
                         console.log(`Skipzero enabled: filtered ${originalLength - filteredLength} zero-value data points, ${filteredLength} remaining`);
                     }
                     
-                    // Fallback to sample data if no real data available
+                    // No fallback to sample data - always use real server data
                     if (this.data.length === 0) {
-                        console.log('No real data available, using sample data');
-                        this.generateSampleData();
-                        
-                        // Apply zero value filtering to sample data if skipzero is enabled
-                        if (this.config.skipzero) {
-                            const originalLength = this.data.length;
-                            this.data = this.filterZeroValues(this.data);
-                            const filteredLength = this.data.length;
-                            console.log(`Skipzero enabled (sample data): filtered ${originalLength - filteredLength} zero-value data points, ${filteredLength} remaining`);
-                        }
+                        console.log('No data available from server');
+                        this.showError('No data available from server');
+                        return;
                     }
                     
                     // Only proceed if we have data
@@ -399,13 +392,6 @@
                 }
             }
 
-            generateSampleData() {
-                // Generate sample data for demonstration
-                this.data = [];
-                const fromTime = parseInt(this.config.fromTimestamp);
-                const toTime = parseInt(this.config.toTimestamp);
-                const metrics = this.config.metrics.split(',').map(m => m.trim());
-                const parsedMetrics = this.parseMetrics(metrics);
                 
                 // Calculate the original time range (without forecast extension)
                 const originalTimeRange = this.config.forecast ? (toTime - fromTime) / 1.3 : (toTime - fromTime);
