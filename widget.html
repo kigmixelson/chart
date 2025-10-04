@@ -391,57 +391,6 @@
                     this.showError('Data source is not selected or load failed');
                 }
             }
-                        
-                        if (isForecastData) {
-                            // Generate forecast data (trending based on recent data)
-                            const recentData = this.data.slice(-5); // Get last 5 data points
-                            if (recentData.length > 0) {
-                                // Calculate trend from recent data
-                                const recentValues = recentData.map(d => d[metric] || 0);
-                                const trend = recentValues.length > 1 ? 
-                                    (recentValues[recentValues.length - 1] - recentValues[0]) / recentValues.length : 0;
-                                
-                                // Apply trend with some randomness
-                                const forecastIncrement = trend + (Math.random() - 0.5) * 100;
-                                currentValues[metric] += forecastIncrement;
-                            } else {
-                                // Fallback to normal increment if no recent data
-                                currentValues[metric] += Math.random() * 200 + 100;
-                            }
-                        } else {
-                            // Simulate realistic data with varying intensity
-                            let increment;
-                            if (i < 10) {
-                                // Low activity period
-                                increment = Math.random() * 100 + 50;
-                            } else if (i < 20) {
-                                // Medium activity period
-                                increment = Math.random() * 300 + 200;
-                            } else if (i < 35) {
-                                // High activity period (peak)
-                                increment = Math.random() * 800 + 500;
-                            } else if (i < 45) {
-                                // Medium activity period
-                                increment = Math.random() * 300 + 200;
-                            } else {
-                                // Low activity period
-                                increment = Math.random() * 100 + 50;
-                            }
-                            
-                            // Add some random spikes
-                            if (Math.random() < 0.1) { // 10% chance of spike
-                                increment *= 2;
-                            }
-                            
-                            currentValues[metric] += increment;
-                        }
-                        
-                        dataPoint[metric] = currentValues[metric];
-                    });
-                    
-                    this.data.push(dataPoint);
-                }
-            }
 
             filterZeroValues(data) {
                 if (!this.config.skipzero) {
