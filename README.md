@@ -228,6 +228,9 @@ The widget can be embedded using URL parameters:
 
 <!-- Chart with forecast mode and zero value filtering -->
 <iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets,ifHCOutOctets&chartType=line&period=hour&forecast=true&skipzero=true"></iframe>
+
+<!-- Chart with custom now line color in forecast mode -->
+<iframe src="widget.html?objectId=67cb1f1f120ab073c5adb8a2&metrics=ifHCInOctets&chartType=line&period=hour&forecast=true&nowLineColor=%2300ff00"></iframe>
 ```
 
 #### Widget Parameters
@@ -244,6 +247,7 @@ The widget can be embedded using URL parameters:
 - `name`: Custom chart title (optional)
 - `forecast`: Enable forecast mode to extend time range by 30% (true/false, optional)
 - `skipzero`: Skip zero values from rendering (true/false, optional)
+- `nowLineColor`: Color of the "now" line in forecast mode (hex color, optional, default: #ff6b6b)
 
 ## API Response Format
 

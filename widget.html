@@ -155,7 +155,8 @@
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
                         forecast: forecast, // Forecast mode parameter
-                        skipzero: urlParams.get('skipzero') === 'true' // Skip zero values parameter
+                        skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
+                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b' // Now line color parameter
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -173,7 +174,8 @@
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
                         forecast: urlParams.get('forecast') === 'true', // Forecast mode parameter
-                        skipzero: urlParams.get('skipzero') === 'true' // Skip zero values parameter
+                        skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
+                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b' // Now line color parameter
                     };
                 }
 
@@ -749,6 +751,23 @@
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
 
+                // Add "now" line in forecast mode
+                if (this.config.forecast) {
+                    const nowTime = new Date();
+                    const nowX = xScale(nowTime);
+                    
+                    chartGroup.append('line')
+                        .attr('class', 'now-line')
+                        .attr('x1', nowX)
+                        .attr('y1', 0)
+                        .attr('x2', nowX)
+                        .attr('y2', height)
+                        .attr('stroke', this.config.nowLineColor || '#ff6b6b')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', '5,5')
+                        .attr('opacity', 0.8);
+                }
+
                 // Create line generator
                 const line = d3.line()
                     .x(d => xScale(d.time))
@@ -862,6 +881,23 @@
                     .attr('class', 'axis')
                     .call(yAxis);
 
+                // Add "now" line in forecast mode
+                if (this.config.forecast) {
+                    const nowTime = new Date();
+                    const nowX = xScale(nowTime);
+                    
+                    chartGroup.append('line')
+                        .attr('class', 'now-line')
+                        .attr('x1', nowX)
+                        .attr('y1', 0)
+                        .attr('x2', nowX)
+                        .attr('y2', height)
+                        .attr('stroke', this.config.nowLineColor || '#ff6b6b')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', '5,5')
+                        .attr('opacity', 0.8);
+                }
+
                 // Add bars for each metric
                 parsedMetrics.forEach((parsedMetric, index) => {
                     const metric = parsedMetric.metricName;
@@ -964,6 +1000,23 @@
                 chartGroup.append('g')
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+
+                // Add "now" line in forecast mode
+                if (this.config.forecast) {
+                    const nowTime = new Date();
+                    const nowX = xScale(nowTime);
+                    
+                    chartGroup.append('line')
+                        .attr('class', 'now-line')
+                        .attr('x1', nowX)
+                        .attr('y1', 0)
+                        .attr('x2', nowX)
+                        .attr('y2', height)
+                        .attr('stroke', this.config.nowLineColor || '#ff6b6b')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', '5,5')
+                        .attr('opacity', 0.8);
+                }
 
                 // Create dots for each metric
                 parsedMetrics.forEach((parsedMetric, index) => {
