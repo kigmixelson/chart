@@ -228,7 +228,7 @@
                 // Apply forecast mode: extend time range by 30% if forecast is enabled
                 if (forecast) {
                     const timeRange = toTimestamp - fromTimestamp;
-                    const forecastExtension = timeRange * 0.3; // 30% extension
+                    const forecastExtension = timeRange * 0.5; // 30% extension
                     const originalToTimestamp = toTimestamp;
                     toTimestamp = toTimestamp + forecastExtension;
                     console.log(`Forecast mode enabled: extending time range by 30% (${Math.round(forecastExtension / (60 * 1000))} minutes)`);
