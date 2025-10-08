@@ -291,9 +291,23 @@
 
             getMetricValue(dataPoint, metric) {
                 const normalizedMetric = this.normalizeMetricName(metric);
-                if (this.config.dataType === 'diff') return dataPoint[`${normalizedMetric}_diff`] || 0;
-                if (this.config.dataType === 'speed') return dataPoint[`${normalizedMetric}_speed`] || 0;
-                return dataPoint[normalizedMetric] || 0;
+                console.log(`getMetricValue: ${metric} -> ${normalizedMetric}, dataType: ${this.config.dataType}`);
+                console.log('Available keys in dataPoint:', Object.keys(dataPoint));
+                console.log('Looking for key:', normalizedMetric);
+                
+                if (this.config.dataType === 'diff') {
+                    const value = dataPoint[`${normalizedMetric}_diff`] || 0;
+                    console.log(`Diff value: ${value}`);
+                    return value;
+                }
+                if (this.config.dataType === 'speed') {
+                    const value = dataPoint[`${normalizedMetric}_speed`] || 0;
+                    console.log(`Speed value: ${value}`);
+                    return value;
+                }
+                const value = dataPoint[normalizedMetric] || 0;
+                console.log(`Raw value: ${value}`);
+                return value;
             }
 
             async loadMetricsData() {
