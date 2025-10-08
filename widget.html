@@ -844,10 +844,14 @@
                         const timeStr = d3.timeFormat('%Y-%m-%d %H:%M:%S')(closestData.time);
                         let infoText = `Time: ${timeStr}`;
                         
+                        console.log('Crosshair data point:', closestData);
+                        console.log('Available keys:', Object.keys(closestData));
+                        
                         metrics.forEach(metric => {
-                            const value = this.getMetricValue(closestData, metric);
-                            const metricName = this.normalizeMetricName(metric);
-                            const displayName = metricName.replace(/==/g, ' / ');
+                            const normalizedMetric = this.normalizeMetricName(metric);
+                            const value = closestData[normalizedMetric] || 0;
+                            const displayName = normalizedMetric.replace(/==/g, ' / ');
+                            console.log(`Metric: ${metric} -> ${normalizedMetric} = ${value}`);
                             infoText += `\n${displayName}: ${d3.format(',.2f')(value)}`;
                         });
 
