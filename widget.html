@@ -415,20 +415,28 @@
                     // Check if metric contains object ID in format {{objectId:metricName}}
                     const objectIdMatch = metric.match(/^\{\{([^:]+):(.+)\}\}$/);
                     if (objectIdMatch) {
+                        const normalizedMetricName = this.normalizeMetricName(objectIdMatch[2]);
                         return {
                             objectId: objectIdMatch[1],
-                            metricName: objectIdMatch[2],
+                            metricName: normalizedMetricName,
                             originalMetric: metric
                         };
                     } else {
                         // Use default object ID from config
+                        const normalizedMetricName = this.normalizeMetricName(metric);
                         return {
                             objectId: this.config.objectId,
-                            metricName: metric,
+                            metricName: normalizedMetricName,
                             originalMetric: metric
                         };
                     }
                 });
+            }
+
+            normalizeMetricName(metricName) {
+                // Normalize metric names by replacing multiple slashes with double equals
+                // Example: "forecast///61//////61///freeMemory" -> "forecast==freeMemory"
+                return metricName.replace(/\/+/g, '==');
             }
 
             transformApiData(rawData) {
@@ -461,12 +469,13 @@
                     
                     // Add values for each metric
                     rawData.forEach(metricData => {
-                        const metricName = metricData.metric;
+                        const originalMetricName = metricData.metric;
+                        const normalizedMetricName = this.normalizeMetricName(originalMetricName);
                         const dpsEntry = metricData.dps.find(([ts]) => ts === timestamp);
                         if (dpsEntry) {
                             const rawValue = dpsEntry[1];
                             const divider = this.config?.divider;
-                            dataPoint[metricName] = divider ? (rawValue / divider) : rawValue;
+                            dataPoint[normalizedMetricName] = divider ? (rawValue / divider) : rawValue;
                         }
                     });
                     
