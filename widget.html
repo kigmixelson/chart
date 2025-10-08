@@ -296,6 +296,7 @@
             }
 
             async loadMetricsData() {
+                console.log('loadMetricsData called with config:', this.config);
                 try {
                     // Recalculate time range if using period (for auto-reload)
                     if (this.config.period) {
@@ -303,10 +304,12 @@
                         this.config.fromTimestamp = fromTimestamp;
                         this.config.toTimestamp = toTimestamp;
                         this.config.downsample = downsample;
+                        console.log('Recalculated time range:', { fromTimestamp, toTimestamp, downsample });
                     }
 
                     const metrics = this.config.metrics.split(',').map(m => m.trim());
                     const parsedMetrics = this.parseMetrics(metrics);
+                    console.log('Parsed metrics:', parsedMetrics);
                     
                     // Group metrics by object ID
                     const metricsByObject = {};
@@ -353,9 +356,12 @@
                         }
                         
                         const objectData = await response.json();
+                        console.log(`API response for object ${objectId}:`, objectData);
                         allData.push(...objectData);
                     }
+                    console.log('All API data collected:', allData);
                     this.data = this.transformApiData(allData);
+                    console.log('Transformed data length:', this.data.length);
                     
                     // Apply zero value filtering if skipzero is enabled
                     if (this.config.skipzero) {
@@ -436,20 +442,32 @@
             normalizeMetricName(metricName) {
                 // Normalize metric names by replacing multiple slashes with double equals
                 // Example: "forecast///61//////61///freeMemory" -> "forecast==freeMemory"
-                return metricName.replace(/\/+/g, '==');
+                const normalized = metricName.replace(/\/+/g, '==');
+                console.log(`Normalizing metric name: "${metricName}" -> "${normalized}"`);
+                return normalized;
             }
 
             transformApiData(rawData) {
                 const transformedData = [];
+                
+                console.log('transformApiData called with rawData:', rawData);
                 
                 if (!Array.isArray(rawData) || rawData.length === 0) {
                     console.warn('No data received from API');
                     return [];
                 }
                 
+                console.log(`Processing ${rawData.length} metrics from API`);
+                
                 // Get all unique timestamps from all metrics
                 const allTimestamps = new Set();
-                rawData.forEach(metricData => {
+                rawData.forEach((metricData, index) => {
+                    console.log(`Metric ${index}:`, {
+                        metric: metricData.metric,
+                        dpsLength: metricData.dps ? metricData.dps.length : 0,
+                        tags: metricData.tags
+                    });
+                    
                     if (metricData.dps && Array.isArray(metricData.dps)) {
                         metricData.dps.forEach(([timestamp]) => {
                             allTimestamps.add(timestamp);
@@ -459,9 +477,10 @@
                 
                 // Sort timestamps
                 const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+                console.log(`Found ${sortedTimestamps.length} unique timestamps:`, sortedTimestamps.slice(0, 5), sortedTimestamps.length > 5 ? '...' : '');
                 
                 // Create data points for each timestamp
-                sortedTimestamps.forEach(timestamp => {
+                sortedTimestamps.forEach((timestamp, index) => {
                     const dataPoint = {
                         timestamp: timestamp,
                         time: new Date(timestamp)
@@ -475,12 +494,20 @@
                         if (dpsEntry) {
                             const rawValue = dpsEntry[1];
                             const divider = this.config?.divider;
-                            dataPoint[normalizedMetricName] = divider ? (rawValue / divider) : rawValue;
+                            const finalValue = divider ? (rawValue / divider) : rawValue;
+                            dataPoint[normalizedMetricName] = finalValue;
+                            
+                            if (index < 3) { // Log first 3 data points for debugging
+                                console.log(`Data point ${index}: ${normalizedMetricName} = ${finalValue} (raw: ${rawValue}, divider: ${divider || 'none'})`);
+                            }
                         }
                     });
                     
                     transformedData.push(dataPoint);
                 });
+                
+                console.log(`Transformed data: ${transformedData.length} data points`);
+                console.log('Sample transformed data point:', transformedData[0]);
                 
                 return transformedData;
             }
@@ -600,8 +627,18 @@
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 const parsedMetrics = this.parseMetrics(metrics);
                 
+                console.log('createLineChart called with:', {
+                    metrics: metrics,
+                    parsedMetrics: parsedMetrics,
+                    dataLength: this.data.length,
+                    dataType: this.config.dataType
+                });
+                
                 // Filter data to remove first point when showing differences or speed
                 let chartData = (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.data.slice(1) : this.data;
+                
+                console.log(`Chart data after filtering: ${chartData.length} points`);
+                console.log('Sample chart data point:', chartData[0]);
                 
                 // Apply zero value filtering if skipzero is enabled
                 if (this.config.skipzero) {
@@ -706,6 +743,13 @@
                     if (this.config.skipzero) {
                         lineData = lineData.filter(d => d.value !== 0 && d.value !== null && d.value !== undefined);
                     }
+
+                    console.log(`Line data for metric ${metric}:`, {
+                        metric: metric,
+                        lineDataLength: lineData.length,
+                        sampleValues: lineData.slice(0, 3).map(d => ({ time: d.time, value: d.value })),
+                        allValues: lineData.map(d => d.value)
+                    });
 
                     chartGroup.append('path')
                         .datum(lineData)
