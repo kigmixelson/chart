@@ -210,7 +210,7 @@
                     case 'week':
                         fromTimestamp = now - (7 * 24 * 60 * 60 * 1000); // 1 week ago
                         toTimestamp = now;
-                        downsample = '1h-avg';
+                        downsample = '30m-avg';
                         break;
                     case 'month':
                         fromTimestamp = now - (30 * 24 * 60 * 60 * 1000); // 1 month ago
