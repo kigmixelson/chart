@@ -850,7 +850,10 @@
                         metrics.forEach(metric => {
                             const normalizedMetric = this.normalizeMetricName(metric);
                             const value = closestData[normalizedMetric] || 0;
-                            const displayName = normalizedMetric.replace(/==/g, ' / ');
+                            // Extract just the metric part from object ID format
+                            const displayName = metric.includes('{{') ? 
+                                metric.match(/\{\{[^:]+:(.+)\}\}/)?.[1] || normalizedMetric : 
+                                normalizedMetric;
                             console.log(`Metric: ${metric} -> ${normalizedMetric} = ${value}`);
                             infoText += `\n${displayName}: ${d3.format(',.2f')(value)}`;
                         });
