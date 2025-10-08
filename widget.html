@@ -856,13 +856,13 @@
                         console.log('Available keys:', Object.keys(closestData));
                         
                         metrics.forEach(metric => {
-                            const normalizedMetric = this.normalizeMetricName(metric);
-                            const value = closestData[normalizedMetric] || 0;
+                            // Use the same getMetricValue method that the chart uses
+                            const value = this.getMetricValue(closestData, metric);
                             // Extract just the metric part from object ID format
                             const displayName = metric.includes('{{') ? 
-                                metric.match(/\{\{[^:]+:(.+)\}\}/)?.[1] || normalizedMetric : 
-                                normalizedMetric;
-                            console.log(`Metric: ${metric} -> ${normalizedMetric} = ${value}`);
+                                metric.match(/\{\{[^:]+:(.+)\}\}/)?.[1] || metric : 
+                                metric;
+                            console.log(`Metric: ${metric} -> ${displayName} = ${value}`);
                             infoText += `\n${displayName}: ${d3.format(',.2f')(value)}`;
                         });
 
