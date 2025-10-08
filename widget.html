@@ -1149,22 +1149,20 @@
                     .attr('class', 'legend-item chart-title-bottom')
                     .text(titleText + periodText);
                 
-                // Add metrics
+                // Add colored marks for metrics
                 parsedMetrics.forEach((parsedMetric, index) => {
-                    const metric = parsedMetric.metricName;
                     const legendItem = legend.append('div')
                         .attr('class', 'legend-item');
 
+                    // Add colored circle mark
                     legendItem.append('div')
                         .attr('class', 'legend-color')
-                        .style('background-color', this.color(index));
-
-                    let label = this.config.dataType === 'speed' ? `${metric} (Speed)` : (this.config.dataType === 'diff' ? `${metric} (Rate)` : `${metric} (Counter)`);
-                    if (this.config.divider) {
-                        label += ` ÷${this.config.divider}`;
-                    }
-                    legendItem.append('span')
-                        .text(label);
+                        .style('background-color', this.color(index))
+                        .style('border-radius', '50%')
+                        .style('width', '12px')
+                        .style('height', '12px')
+                        .style('display', 'inline-block')
+                        .style('margin-right', '8px');
                 });
             }
 
