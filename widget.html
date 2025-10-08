@@ -291,23 +291,14 @@
 
             getMetricValue(dataPoint, metric) {
                 const normalizedMetric = this.normalizeMetricName(metric);
-                console.log(`getMetricValue: ${metric} -> ${normalizedMetric}, dataType: ${this.config.dataType}`);
-                console.log('Available keys in dataPoint:', Object.keys(dataPoint));
-                console.log('Looking for key:', normalizedMetric);
                 
                 if (this.config.dataType === 'diff') {
-                    const value = dataPoint[`${normalizedMetric}_diff`] || 0;
-                    console.log(`Diff value: ${value}`);
-                    return value;
+                    return dataPoint[`${normalizedMetric}_diff`] || 0;
                 }
                 if (this.config.dataType === 'speed') {
-                    const value = dataPoint[`${normalizedMetric}_speed`] || 0;
-                    console.log(`Speed value: ${value}`);
-                    return value;
+                    return dataPoint[`${normalizedMetric}_speed`] || 0;
                 }
-                const value = dataPoint[normalizedMetric] || 0;
-                console.log(`Raw value: ${value}`);
-                return value;
+                return dataPoint[normalizedMetric] || 0;
             }
 
             async loadMetricsData() {
@@ -870,14 +861,11 @@
                         }
                     });
                     
-                    console.log('Mouse X position:', mouseX, 'Time:', x0, 'Found data point:', closestData);
 
                     if (closestData) {
                         // Update info display
                         const timeStr = d3.timeFormat('%Y-%m-%d %H:%M:%S')(closestData.time);
                         
-                        console.log('Crosshair data point:', closestData);
-                        console.log('Available keys:', Object.keys(closestData));
                         
                         // Clear and rebuild info display with HTML
                         infoDisplay.html('');
@@ -895,7 +883,6 @@
                             const displayName = metric.includes('{{') ? 
                                 metric.match(/\{\{[^:]+:(.+)\}\}/)?.[1] || metric : 
                                 metric;
-                            console.log(`Metric: ${metric} -> ${displayName} = ${value}`);
                             
                             const metricDiv = infoDisplay.append('div')
                                 .style('display', 'flex')
