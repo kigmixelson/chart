@@ -160,16 +160,16 @@
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
-                    this.config = {
-                        objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
-                        fromTimestamp: urlParams.get('from') || '1756497678991',
-                        toTimestamp: urlParams.get('to') || '1756592718991',
-                        downsample: urlParams.get('downsample') || '5m-avg',
-                        metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
-                        authToken: urlParams.get('authToken'), // Optional - no default
-                        chartType: urlParams.get('chartType') || 'line',
+                this.config = {
+                    objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
+                    fromTimestamp: urlParams.get('from') || '1756497678991',
+                    toTimestamp: urlParams.get('to') || '1756592718991',
+                    downsample: urlParams.get('downsample') || '5m-avg',
+                    metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
+                    authToken: urlParams.get('authToken'), // Optional - no default
+                    chartType: urlParams.get('chartType') || 'line',
                         dataType: urlParams.get('dataType') || 'diff', // Rate (diff), speed, or raw counter
-                        width: parseInt(urlParams.get('width')) || window.innerWidth,
+                    width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
@@ -332,24 +332,24 @@
                         const apiToTimestamp = this.config.toTimestamp; // This already includes forecast extension
                         
                         let apiUrl = `https://bccdemo.cpult.ru/node/api/objects/${objectId}/history?from=${apiFromTimestamp}&to=${apiToTimestamp}&downsample=${this.config.downsample}&${metricsParams}`;
-                        
-                        // Add auth token if provided
-                        if (this.config.authToken) {
-                            apiUrl += `&auth-token=${this.config.authToken}`;
-                        }
-                        
-                        console.log('Loading data from:', apiUrl);
+                    
+                    // Add auth token if provided
+                    if (this.config.authToken) {
+                        apiUrl += `&auth-token=${this.config.authToken}`;
+                    }
+                    
+                    console.log('Loading data from:', apiUrl);
                         console.log(`API time range: ${new Date(parseInt(apiFromTimestamp)).toISOString()} to ${new Date(parseInt(apiToTimestamp)).toISOString()}`);
-                        const response = await fetch(apiUrl, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json'
-                            },
-                            mode: 'cors'
-                        });
-                        
-                        if (!response.ok) {
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        mode: 'cors'
+                    });
+                    
+                    if (!response.ok) {
                             console.error(`HTTP error! status: ${response.status}`);
                             this.showError('Data source is not selected or load failed');
                             return;
@@ -386,8 +386,8 @@
                         } else if (this.config.dataType === 'speed') {
                             this.calculateSpeed();
                         }
-                        
-                        this.createChart();
+                    
+                    this.createChart();
                     } else {
                         // No data available
                         this.showError('Data source is not selected or load failed');
@@ -831,13 +831,21 @@
                         .attr('x2', mouseX)
                         .attr('opacity', 1);
 
-                    // Find closest data point
-                    const bisect = d3.bisector(d => d.time).left;
+                    // Find the exact data point at this X position
                     const x0 = xScale.invert(mouseX);
-                    const index = bisect(chartData, x0, 1);
-                    const d0 = chartData[index - 1];
-                    const d1 = chartData[index];
-                    const closestData = d1 && (x0 - d0.time > d1.time - x0) ? d1 : d0;
+                    let closestData = null;
+                    let minDistance = Infinity;
+                    
+                    // Find the data point with the smallest time difference
+                    chartData.forEach(d => {
+                        const distance = Math.abs(d.time - x0);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestData = d;
+                        }
+                    });
+                    
+                    console.log('Mouse X position:', mouseX, 'Time:', x0, 'Found data point:', closestData);
 
                     if (closestData) {
                         // Update info display
@@ -862,13 +870,11 @@
                             .style('display', 'block')
                             .text(infoText);
 
-                        // Highlight nearby points
+                        // Highlight the exact data point
                         chartGroup.selectAll('.data-point')
-                            .attr('r', (d, i) => {
-                                const pointTime = d.time;
-                                const timeDiff = Math.abs(pointTime - closestData.time);
-                                const threshold = (chartData[1]?.time - chartData[0]?.time) || 1;
-                                return timeDiff < threshold ? this.pointSize + 3 : this.pointSize;
+                            .attr('r', (d) => {
+                                // Highlight only the exact data point that matches
+                                return d.time === closestData.time ? this.pointSize + 3 : this.pointSize;
                             });
                     }
                 });
@@ -913,7 +919,7 @@
                 const maxValue = d3.max(allValues);
                 const dataRange = maxValue - minValue;
                 const padding = dataRange * 0.1; // 10% of data variation
-                
+
                 const yScale = d3.scaleLinear()
                     .domain([minValue - padding, maxValue + padding])
                     .range([height, 0]);
