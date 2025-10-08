@@ -440,9 +440,11 @@
             }
 
             normalizeMetricName(metricName) {
-                // Normalize metric names by replacing multiple slashes with double equals
+                // Normalize metric names by removing numeric segments and replacing slashes
                 // Example: "forecast///61//////61///freeMemory" -> "forecast==freeMemory"
-                const normalized = metricName.replace(/\/+/g, '==');
+                // Split by slashes, filter out numeric segments, then join with ==
+                const parts = metricName.split(/\/+/).filter(part => part && !/^\d+$/.test(part));
+                const normalized = parts.join('==');
                 console.log(`Normalizing metric name: "${metricName}" -> "${normalized}"`);
                 return normalized;
             }
