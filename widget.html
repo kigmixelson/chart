@@ -290,9 +290,10 @@
             }
 
             getMetricValue(dataPoint, metric) {
-                if (this.config.dataType === 'diff') return dataPoint[`${metric}_diff`] || 0;
-                if (this.config.dataType === 'speed') return dataPoint[`${metric}_speed`] || 0;
-                return dataPoint[metric] || 0;
+                const normalizedMetric = this.normalizeMetricName(metric);
+                if (this.config.dataType === 'diff') return dataPoint[`${normalizedMetric}_diff`] || 0;
+                if (this.config.dataType === 'speed') return dataPoint[`${normalizedMetric}_speed`] || 0;
+                return dataPoint[normalizedMetric] || 0;
             }
 
             async loadMetricsData() {
