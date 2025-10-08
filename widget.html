@@ -614,18 +614,45 @@
                 const chartWidth = this.width - this.margin.left - this.margin.right;
                 const chartHeight = this.height - this.margin.top - this.margin.bottom;
 
+                // Add crosshair line
+                const crosshair = chartGroup.append('line')
+                    .attr('class', 'crosshair')
+                    .attr('stroke', '#ccc')
+                    .attr('stroke-dasharray', '3,3')
+                    .attr('stroke-width', 1)
+                    .attr('opacity', 0)
+                    .attr('x1', 0)
+                    .attr('x2', 0)
+                    .attr('y1', 0)
+                    .attr('y2', chartHeight);
+
+                // Add info display at top
+                const infoDisplay = chartContainer.append('div')
+                    .attr('class', 'chart-info')
+                    .style('position', 'absolute')
+                    .style('top', '5px')
+                    .style('left', '10px')
+                    .style('background', 'rgba(255, 255, 255, 0.9)')
+                    .style('padding', '5px 10px')
+                    .style('border-radius', '4px')
+                    .style('font-size', '12px')
+                    .style('font-family', 'monospace')
+                    .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+                    .style('display', 'none')
+                    .style('z-index', '1000');
+
                 if (this.config.chartType === 'line') {
-                    this.createLineChart(chartGroup, chartWidth, chartHeight);
+                    this.createLineChart(chartGroup, chartWidth, chartHeight, crosshair, infoDisplay);
                 } else if (this.config.chartType === 'bar') {
-                    this.createBarChart(chartGroup, chartWidth, chartHeight);
+                    this.createBarChart(chartGroup, chartWidth, chartHeight, crosshair, infoDisplay);
                 } else if (this.config.chartType === 'dots') {
-                    this.createDotsChart(chartGroup, chartWidth, chartHeight);
+                    this.createDotsChart(chartGroup, chartWidth, chartHeight, crosshair, infoDisplay);
                 }
 
                 this.createLegend();
             }
 
-            createLineChart(chartGroup, width, height) {
+            createLineChart(chartGroup, width, height, crosshair, infoDisplay) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 const parsedMetrics = this.parseMetrics(metrics);
                 
@@ -774,15 +801,83 @@
                         .attr('stroke', 'white')
                         .attr('stroke-width', 1)
                         .on('mouseover', (event, d) => {
-                            this.showTooltip(event, d, metric);
+                            // Tooltip functionality replaced by crosshair info display
                         })
                         .on('mouseout', () => {
-                            this.hideTooltip();
+                            // Tooltip functionality replaced by crosshair info display
                         });
+                });
+
+                // Add crosshair functionality
+                this.addCrosshairFunctionality(chartGroup, width, height, xScale, yScale, crosshair, infoDisplay, chartData, metrics);
+            }
+
+            addCrosshairFunctionality(chartGroup, width, height, xScale, yScale, crosshair, infoDisplay, chartData, metrics) {
+                // Add invisible overlay for mouse tracking
+                const overlay = chartGroup.append('rect')
+                    .attr('class', 'crosshair-overlay')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('fill', 'transparent')
+                    .style('cursor', 'crosshair');
+
+                // Mouse move handler
+                overlay.on('mousemove', (event) => {
+                    const [mouseX, mouseY] = d3.pointer(event);
+                    
+                    // Update crosshair position
+                    crosshair
+                        .attr('x1', mouseX)
+                        .attr('x2', mouseX)
+                        .attr('opacity', 1);
+
+                    // Find closest data point
+                    const bisect = d3.bisector(d => d.time).left;
+                    const x0 = xScale.invert(mouseX);
+                    const index = bisect(chartData, x0, 1);
+                    const d0 = chartData[index - 1];
+                    const d1 = chartData[index];
+                    const closestData = d1 && (x0 - d0.time > d1.time - x0) ? d1 : d0;
+
+                    if (closestData) {
+                        // Update info display
+                        const timeStr = d3.timeFormat('%Y-%m-%d %H:%M:%S')(closestData.time);
+                        let infoText = `Time: ${timeStr}`;
+                        
+                        metrics.forEach(metric => {
+                            const value = this.getMetricValue(closestData, metric);
+                            const metricName = this.normalizeMetricName(metric);
+                            const displayName = metricName.replace(/==/g, ' / ');
+                            infoText += `\n${displayName}: ${d3.format(',.2f')(value)}`;
+                        });
+
+                        infoDisplay
+                            .style('display', 'block')
+                            .text(infoText);
+
+                        // Highlight nearby points
+                        chartGroup.selectAll('.data-point')
+                            .attr('r', (d, i) => {
+                                const pointTime = d.time;
+                                const timeDiff = Math.abs(pointTime - closestData.time);
+                                const threshold = (chartData[1]?.time - chartData[0]?.time) || 1;
+                                return timeDiff < threshold ? this.pointSize + 3 : this.pointSize;
+                            });
+                    }
+                });
+
+                // Mouse leave handler
+                overlay.on('mouseleave', () => {
+                    crosshair.attr('opacity', 0);
+                    infoDisplay.style('display', 'none');
+                    
+                    // Reset point sizes
+                    chartGroup.selectAll('.data-point')
+                        .attr('r', this.pointSize);
                 });
             }
 
-            createBarChart(chartGroup, width, height) {
+            createBarChart(chartGroup, width, height, crosshair, infoDisplay) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 const parsedMetrics = this.parseMetrics(metrics);
                 
@@ -886,15 +981,18 @@
                         .attr('fill', this.color(index))
                         .attr('opacity', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? 0.9 : 0.8)
                         .on('mouseover', (event, d) => {
-                            this.showTooltip(event, d, metric);
+                            // Tooltip functionality replaced by crosshair info display
                         })
                         .on('mouseout', () => {
-                            this.hideTooltip();
+                            // Tooltip functionality replaced by crosshair info display
                         });
                 });
+
+                // Add crosshair functionality
+                this.addCrosshairFunctionality(chartGroup, width, height, xScale, yScale, crosshair, infoDisplay, chartData, metrics);
             }
 
-            createDotsChart(chartGroup, width, height) {
+            createDotsChart(chartGroup, width, height, crosshair, infoDisplay) {
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 const parsedMetrics = this.parseMetrics(metrics);
                 
@@ -1007,12 +1105,15 @@
                         .attr('stroke-width', 1)
                         .attr('opacity', 0.8)
                         .on('mouseover', (event, d) => {
-                            this.showTooltip(event, d, metric);
+                            // Tooltip functionality replaced by crosshair info display
                         })
                         .on('mouseout', () => {
-                            this.hideTooltip();
+                            // Tooltip functionality replaced by crosshair info display
                         });
                 });
+
+                // Add crosshair functionality
+                this.addCrosshairFunctionality(chartGroup, width, height, xScale, yScale, crosshair, infoDisplay, chartData, metrics);
             }
 
             createLegend() {
