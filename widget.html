@@ -455,6 +455,16 @@
             }
 
             normalizeMetricName(metricName) {
+                // Handle object ID format first: {{objectId:metricName}}
+                if (metricName.includes('{{') && metricName.includes('}}')) {
+                    const match = metricName.match(/\{\{[^:]+:(.+)\}\}/);
+                    if (match) {
+                        const extractedMetric = match[1];
+                        //console.log(`Extracted metric from object ID: "${metricName}" -> "${extractedMetric}"`);
+                        return extractedMetric;
+                    }
+                }
+                
                 // Normalize metric names by removing numeric segments and replacing slashes
                 // Example: "forecast///61//////61///freeMemory" -> "forecast==freeMemory"
                 // Split by slashes, filter out numeric segments, then join with ==
