@@ -156,7 +156,8 @@
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
                         forecast: forecast, // Forecast mode parameter
                         skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
-                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b' // Now line color parameter
+                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b', // Now line color parameter
+                        showAvg: urlParams.get('showAvg') === 'true' // Show average lines parameter
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -175,7 +176,8 @@
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
                         forecast: urlParams.get('forecast') === 'true', // Forecast mode parameter
                         skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
-                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b' // Now line color parameter
+                        nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b', // Now line color parameter
+                        showAvg: urlParams.get('showAvg') === 'true' // Show average lines parameter
                     };
                 }
 
@@ -299,6 +301,28 @@
                     return dataPoint[`${normalizedMetric}_speed`] || 0;
                 }
                 return dataPoint[normalizedMetric] || 0;
+            }
+
+            calculateMetricAverages(chartData, metrics) {
+                const averages = {};
+                
+                metrics.forEach(metric => {
+                    const normalizedMetric = this.normalizeMetricName(metric);
+                    let sum = 0;
+                    let count = 0;
+                    
+                    chartData.forEach(dataPoint => {
+                        const value = this.getMetricValue(dataPoint, metric);
+                        if (value !== null && value !== undefined && !isNaN(value)) {
+                            sum += value;
+                            count++;
+                        }
+                    });
+                    
+                    averages[metric] = count > 0 ? sum / count : 0;
+                });
+                
+                return averages;
             }
 
             async loadMetricsData() {
@@ -847,6 +871,31 @@
                         .attr('x2', mouseX)
                         .attr('opacity', 1);
 
+                    // Calculate averages if showAvg is enabled
+                    let averages = {};
+                    if (this.config.showAvg) {
+                        averages = this.calculateMetricAverages(chartData, metrics);
+                        
+                        // Draw horizontal average lines
+                        chartGroup.selectAll('.avg-line').remove(); // Remove existing lines
+                        
+                        metrics.forEach((metric, index) => {
+                            const avgValue = averages[metric];
+                            const yPos = yScale(avgValue);
+                            
+                            chartGroup.append('line')
+                                .attr('class', 'avg-line')
+                                .attr('x1', 0)
+                                .attr('x2', width)
+                                .attr('y1', yPos)
+                                .attr('y2', yPos)
+                                .attr('stroke', this.color(index))
+                                .attr('stroke-width', 1)
+                                .attr('stroke-dasharray', '5,5')
+                                .attr('opacity', 0.7);
+                        });
+                    }
+
                     // Find the exact data point at this X position
                     const x0 = xScale.invert(mouseX);
                     let closestData = null;
@@ -899,8 +948,16 @@
                                 .style('flex-shrink', '0');
                             
                             // Add metric name and value
+                            let valueText = `${displayName}: ${d3.format(',.2f')(value)}`;
+                            
+                            // Add average value if showAvg is enabled
+                            if (this.config.showAvg && averages[metric] !== undefined) {
+                                const avgValue = averages[metric];
+                                valueText += ` (avg: ${d3.format(',.2f')(avgValue)})`;
+                            }
+                            
                             metricDiv.append('span')
-                                .text(`${displayName}: ${d3.format(',.2f')(value)}`);
+                                .text(valueText);
                         });
 
                         infoDisplay.style('display', 'block');
@@ -918,6 +975,9 @@
                 overlay.on('mouseleave', () => {
                     crosshair.attr('opacity', 0);
                     infoDisplay.style('display', 'none');
+                    
+                    // Remove average lines if they exist
+                    chartGroup.selectAll('.avg-line').remove();
                     
                     // Reset point sizes
                     chartGroup.selectAll('.data-point')
