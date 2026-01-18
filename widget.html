@@ -16,13 +16,37 @@
             width: 100%;
             height: 100vh;
             position: relative;
+            display: flex;
+            flex-direction: row;
         }
         .chart-container {
-            width: 100%;
+            flex: 1;
             height: 100%;
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        .period-buttons {
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 20px 10px;
+            box-sizing: border-box;
+        }
+        .period-btn {
+            width: 100%;
+            padding: 12px 8px;
+            border: 1px solid;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .period-btn.active:hover {
+            opacity: 0.9;
         }
         .chart {
             width: 100%;
@@ -104,6 +128,12 @@
             </div>
             <div class="tooltip" id="tooltip"></div>
             <div class="legend" id="legend"></div>
+        </div>
+        <div class="period-buttons" id="periodButtons">
+            <button class="period-btn" data-period="hour">час</button>
+            <button class="period-btn" data-period="day">день</button>
+            <button class="period-btn" data-period="week">неделя</button>
+            <button class="period-btn" data-period="month">месяц</button>
         </div>
     </div>
 
@@ -222,7 +252,13 @@
                         tooltipBackground: 'rgba(0, 0, 0, 0.9)',
                         tooltipText: '#ffffff',
                         crosshair: '#718096',
-                        pointStroke: '#1a202c'
+                        pointStroke: '#1a202c',
+                        buttonBackground: '#2d3748',
+                        buttonBorder: '#4a5568',
+                        buttonText: '#e2e8f0',
+                        buttonHover: '#374151',
+                        buttonActive: '#4299e1',
+                        buttonActiveText: '#ffffff'
                     };
                 } else {
                     return {
@@ -237,7 +273,13 @@
                         tooltipBackground: 'rgba(0, 0, 0, 0.8)',
                         tooltipText: '#ffffff',
                         crosshair: '#cbd5e0',
-                        pointStroke: '#ffffff'
+                        pointStroke: '#ffffff',
+                        buttonBackground: '#ffffff',
+                        buttonBorder: '#cbd5e0',
+                        buttonText: '#2d3748',
+                        buttonHover: '#f7fafc',
+                        buttonActive: '#4299e1',
+                        buttonActiveText: '#ffffff'
                     };
                 }
             }
@@ -280,28 +322,34 @@
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
-                this.config = {
-                    objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
-                    fromTimestamp: urlParams.get('from') || '1756497678991',
-                    toTimestamp: urlParams.get('to') || '1756592718991',
-                    downsample: urlParams.get('downsample') || '5m-avg',
-                    metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
-                    authToken: urlParams.get('authToken'), // Optional - no default
-                    chartType: urlParams.get('chartType') || 'line',
+                    // Default to 'day' period if no explicit parameters
+                    const defaultPeriod = 'day';
+                    const forecast = urlParams.get('forecast') === 'true';
+                    const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(defaultPeriod, forecast);
+                    
+                    this.config = {
+                        objectId: urlParams.get('objectId') || '67cb1f1f120ab073c5adb8a2',
+                        fromTimestamp: urlParams.get('from') || fromTimestamp,
+                        toTimestamp: urlParams.get('to') || toTimestamp,
+                        downsample: urlParams.get('downsample') || downsample,
+                        metrics: urlParams.get('metrics') || 'ifHCInOctets,ifHCOutOctets',
+                        authToken: urlParams.get('authToken'), // Optional - no default
+                        chartType: urlParams.get('chartType') || 'line',
                         dataType: urlParams.get('dataType') || 'diff', // Rate (diff), speed, or raw counter
-                    width: parseInt(urlParams.get('width')) || window.innerWidth,
+                        width: parseInt(urlParams.get('width')) || window.innerWidth,
                         height: parseInt(urlParams.get('height')) || window.innerHeight,
+                        period: defaultPeriod, // Default to 'day' if not explicitly set
                         name: urlParams.get('name'), // Optional custom chart name
                         divider: !isNaN(divider) && divider > 0 ? divider : null,
-                        forecast: urlParams.get('forecast') === 'true', // Forecast mode parameter
+                        forecast: forecast, // Forecast mode parameter
                         skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
                         nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b', // Now line color parameter
                         showAvg: urlParams.get('showAvg') === 'true' // Show average lines parameter
                     };
                 }
 
-                // Adjust chart dimensions
-                this.width = this.config.width - 40; // Account for padding
+                // Adjust chart dimensions (account for padding and period buttons)
+                this.width = this.config.width - 40 - 60; // Account for padding and period buttons (60px)
                 this.height = this.config.height - 40;
 
                 console.log('Widget config:', this.config);
@@ -312,10 +360,114 @@
                 d3.select('.loading')
                     .style('color', this.themeColors.textSecondary);
                 
+                // Initialize period buttons
+                this.initPeriodButtons();
+                
                 // Auto-load data
                 this.loadMetricsData();
                 
                 // Set up automatic reload based on period
+                this.setupAutoReload();
+            }
+
+            initPeriodButtons() {
+                // Apply theme to buttons
+                this.applyThemeToButtons();
+                
+                // Set active button based on current period
+                const currentPeriod = this.config.period || 'day';
+                const buttons = d3.selectAll('.period-btn');
+                const self = this;
+                
+                buttons.each(function() {
+                    const btn = d3.select(this);
+                    const btnPeriod = btn.attr('data-period');
+                    if (btnPeriod === currentPeriod) {
+                        btn.classed('active', true)
+                            .style('background', self.themeColors.buttonActive)
+                            .style('color', self.themeColors.buttonActiveText);
+                    } else {
+                        btn.classed('active', false)
+                            .style('background', self.themeColors.buttonBackground)
+                            .style('color', self.themeColors.buttonText);
+                    }
+                });
+                
+                // Add click handlers
+                buttons.on('click', (event) => {
+                    const period = d3.select(event.currentTarget).attr('data-period');
+                    this.switchPeriod(period);
+                });
+            }
+
+            applyThemeToButtons() {
+                const self = this;
+                const buttons = d3.selectAll('.period-btn');
+                buttons
+                    .style('background', self.themeColors.buttonBackground)
+                    .style('color', self.themeColors.buttonText)
+                    .style('border-color', self.themeColors.buttonBorder);
+                
+                // Update hover and active states
+                buttons.on('mouseenter', function() {
+                    if (!d3.select(this).classed('active')) {
+                        d3.select(this)
+                            .style('background', self.themeColors.buttonHover);
+                    }
+                }).on('mouseleave', function() {
+                    if (!d3.select(this).classed('active')) {
+                        d3.select(this)
+                            .style('background', self.themeColors.buttonBackground);
+                    }
+                });
+            }
+
+            switchPeriod(period) {
+                const self = this;
+                
+                // Update active button
+                const buttons = d3.selectAll('.period-btn');
+                buttons.classed('active', false)
+                    .style('background', self.themeColors.buttonBackground)
+                    .style('color', self.themeColors.buttonText);
+                
+                const activeButton = buttons.filter(function() {
+                    return d3.select(this).attr('data-period') === period;
+                });
+                
+                activeButton.classed('active', true)
+                    .style('background', self.themeColors.buttonActive)
+                    .style('color', self.themeColors.buttonActiveText);
+                
+                // Re-apply hover handlers
+                buttons.on('mouseenter', function() {
+                    if (!d3.select(this).classed('active')) {
+                        d3.select(this)
+                            .style('background', self.themeColors.buttonHover);
+                    }
+                }).on('mouseleave', function() {
+                    if (!d3.select(this).classed('active')) {
+                        d3.select(this)
+                            .style('background', self.themeColors.buttonBackground);
+                    } else {
+                        d3.select(this)
+                            .style('background', self.themeColors.buttonActive);
+                    }
+                });
+                
+                // Update config
+                const forecast = this.config.forecast || false;
+                const { fromTimestamp, toTimestamp, downsample } = this.calculateTimeRange(period, forecast);
+                
+                this.config.period = period;
+                this.config.fromTimestamp = fromTimestamp;
+                this.config.toTimestamp = toTimestamp;
+                this.config.downsample = downsample;
+                
+                // Reload data with new period
+                this.loadMetricsData();
+                
+                // Update auto-reload
                 this.setupAutoReload();
             }
 
