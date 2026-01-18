@@ -185,6 +185,18 @@
                 const g = parseInt(rgbMatch[2]);
                 const b = parseInt(rgbMatch[3]);
                 
+                // Explicit check for very light colors (e.g., white or near-white)
+                // If all RGB components are > 200, it's definitely light
+                if (r > 200 && g > 200 && b > 200) {
+                    return 'light';
+                }
+                
+                // Explicit check for very dark colors (e.g., black or near-black)
+                // If all RGB components are < 50, it's definitely dark
+                if (r < 50 && g < 50 && b < 50) {
+                    return 'dark';
+                }
+                
                 // Calculate luminance (relative brightness)
                 // Using formula: 0.299*R + 0.587*G + 0.114*B
                 const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
