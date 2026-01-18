@@ -322,7 +322,8 @@
                         forecast: forecast, // Forecast mode parameter
                         skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
                         nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b', // Now line color parameter
-                        showAvg: urlParams.get('showAvg') === 'true' // Show average lines parameter
+                        showAvg: urlParams.get('showAvg') === 'true', // Show average lines parameter
+                        buttons: urlParams.get('buttons') === 'true' // Show period buttons parameter
                     };
                 } else {
                     // Use explicit from/to/downsample if period not specified
@@ -348,7 +349,8 @@
                         forecast: forecast, // Forecast mode parameter
                         skipzero: urlParams.get('skipzero') === 'true', // Skip zero values parameter
                         nowLineColor: urlParams.get('nowLineColor') || '#ff6b6b', // Now line color parameter
-                        showAvg: urlParams.get('showAvg') === 'true' // Show average lines parameter
+                        showAvg: urlParams.get('showAvg') === 'true', // Show average lines parameter
+                        buttons: urlParams.get('buttons') === 'true' // Show period buttons parameter
                     };
                 }
 
@@ -375,6 +377,15 @@
             }
 
             initPeriodButtons() {
+                // Show/hide buttons based on config
+                const buttonsPanel = d3.select('.period-buttons');
+                if (this.config.buttons) {
+                    buttonsPanel.style('display', 'flex');
+                } else {
+                    buttonsPanel.style('display', 'none');
+                    return; // Don't initialize if buttons are hidden
+                }
+                
                 // Apply theme to buttons
                 this.applyThemeToButtons();
                 
