@@ -20,7 +20,6 @@
         .chart-container {
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.95);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -36,7 +35,6 @@
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #666;
             font-size: 16px;
         }
         .error {
@@ -44,7 +42,6 @@
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #666;
             font-size: 14px;
             text-align: center;
             padding: 20px;
@@ -120,7 +117,67 @@
                 this.pointSize = 2;
                 this.reloadInterval = null;
                 
+                // Detect theme and set colors
+                this.theme = this.detectTheme();
+                this.themeColors = this.getThemeColors(this.theme);
+                
                 this.init();
+            }
+
+            detectTheme() {
+                const bgColor = window.getComputedStyle(document.body).backgroundColor;
+                
+                // Parse RGB values
+                const rgbMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                if (!rgbMatch) {
+                    // Default to light theme if can't parse
+                    return 'light';
+                }
+                
+                const r = parseInt(rgbMatch[1]);
+                const g = parseInt(rgbMatch[2]);
+                const b = parseInt(rgbMatch[3]);
+                
+                // Calculate luminance (relative brightness)
+                // Using formula: 0.299*R + 0.587*G + 0.114*B
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                
+                // If luminance is less than 0.5, it's dark
+                return luminance < 0.5 ? 'dark' : 'light';
+            }
+
+            getThemeColors(theme) {
+                if (theme === 'dark') {
+                    return {
+                        background: 'rgba(30, 30, 30, 0.95)',
+                        chartBackground: 'rgba(20, 20, 20, 0.95)',
+                        text: '#e2e8f0',
+                        textSecondary: '#a0aec0',
+                        axis: '#4a5568',
+                        grid: '#2d3748',
+                        gridOpacity: 0.5,
+                        legendBackground: 'rgba(45, 55, 72, 0.9)',
+                        tooltipBackground: 'rgba(0, 0, 0, 0.9)',
+                        tooltipText: '#ffffff',
+                        crosshair: '#718096',
+                        pointStroke: '#1a202c'
+                    };
+                } else {
+                    return {
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        chartBackground: 'rgba(255, 255, 255, 0.95)',
+                        text: '#2d3748',
+                        textSecondary: '#4a5568',
+                        axis: '#cbd5e0',
+                        grid: '#e2e8f0',
+                        gridOpacity: 0.7,
+                        legendBackground: 'rgba(255, 255, 255, 0.9)',
+                        tooltipBackground: 'rgba(0, 0, 0, 0.8)',
+                        tooltipText: '#ffffff',
+                        crosshair: '#cbd5e0',
+                        pointStroke: '#ffffff'
+                    };
+                }
             }
 
             init() {
@@ -186,6 +243,12 @@
                 this.height = this.config.height - 40;
 
                 console.log('Widget config:', this.config);
+                
+                // Apply theme to initial elements
+                d3.select('.chart-container')
+                    .style('background', this.themeColors.background);
+                d3.select('.loading')
+                    .style('color', this.themeColors.textSecondary);
                 
                 // Auto-load data
                 this.loadMetricsData();
@@ -323,6 +386,20 @@
                 });
                 
                 return averages;
+            }
+
+            applyThemeToAxes(axisGroup) {
+                axisGroup.selectAll('path, line')
+                    .attr('stroke', this.themeColors.axis);
+                axisGroup.selectAll('text')
+                    .attr('fill', this.themeColors.textSecondary)
+                    .style('font-size', '11px');
+            }
+
+            applyThemeToGrid(gridGroup) {
+                gridGroup.selectAll('line')
+                    .attr('stroke', this.themeColors.grid)
+                    .attr('stroke-opacity', this.themeColors.gridOpacity);
             }
 
             async loadMetricsData() {
@@ -630,12 +707,21 @@
 
             showError(message) {
                 const chartContainer = d3.select('#chart');
-                chartContainer.html(`<div class="error">${message}</div>`);
+                const errorDiv = chartContainer.html(`<div class="error">${message}</div>`);
+                d3.select('.error')
+                    .style('color', this.themeColors.textSecondary);
+                // Apply theme to chart container
+                d3.select('.chart-container')
+                    .style('background', this.themeColors.background);
             }
 
             createChart() {
                 const chartContainer = d3.select('#chart');
                 chartContainer.html('');
+
+                // Apply theme to chart container
+                d3.select('.chart-container')
+                    .style('background', this.themeColors.background);
 
                 if (this.data.length === 0) {
                     this.showError('Data source is not selected or load failed');
@@ -646,7 +732,8 @@
                     .append('svg')
                     .attr('width', this.width)
                     .attr('height', this.height)
-                    .attr('viewBox', `0 0 ${this.width} ${this.height}`);
+                    .attr('viewBox', `0 0 ${this.width} ${this.height}`)
+                    .style('background', this.themeColors.chartBackground);
 
                 const chartGroup = svg.append('g')
                     .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
@@ -657,7 +744,7 @@
                 // Add crosshair line
                 const crosshair = chartGroup.append('line')
                     .attr('class', 'crosshair')
-                    .attr('stroke', '#ccc')
+                    .attr('stroke', this.themeColors.crosshair)
                     .attr('stroke-dasharray', '3,3')
                     .attr('stroke-width', 1)
                     .attr('opacity', 0)
@@ -672,7 +759,8 @@
                     .style('position', 'absolute')
                     .style('top', '5px')
                     .style('left', '10px')
-                    .style('background', 'rgba(255, 255, 255, 0.9)')
+                    .style('background', this.themeColors.legendBackground)
+                    .style('color', this.themeColors.text)
                     .style('padding', '5px 10px')
                     .style('border-radius', '4px')
                     .style('font-size', '12px')
@@ -755,24 +843,28 @@
                     })
                     .ticks(yTicks);
 
-                chartGroup.append('g')
+                const xAxisGroup = chartGroup.append('g')
                     .attr('class', 'axis')
                     .attr('transform', `translate(0, ${height})`)
                     .call(xAxis);
+                this.applyThemeToAxes(xAxisGroup);
 
-                chartGroup.append('g')
+                const yAxisGroup = chartGroup.append('g')
                     .attr('class', 'axis')
                     .call(yAxis);
+                this.applyThemeToAxes(yAxisGroup);
 
                 // Add grid
-                chartGroup.append('g')
+                const xGridGroup = chartGroup.append('g')
                     .attr('class', 'grid')
                     .attr('transform', `translate(0, ${height})`)
                     .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+                this.applyThemeToGrid(xGridGroup);
 
-                chartGroup.append('g')
+                const yGridGroup = chartGroup.append('g')
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+                this.applyThemeToGrid(yGridGroup);
 
                 // Add "now" line in forecast mode
                 if (this.config.forecast) {
@@ -838,7 +930,7 @@
                         .attr('cy', d => yScale(d.value))
                         .attr('r', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.pointSize + 1 : this.pointSize)
                         .attr('fill', this.color(index))
-                        .attr('stroke', 'white')
+                        .attr('stroke', this.themeColors.pointStroke)
                         .attr('stroke-width', 1)
                         .on('mouseover', (event, d) => {
                             // Tooltip functionality replaced by crosshair info display
@@ -1038,14 +1130,16 @@
                     })
                     .ticks(yTicks);
 
-                chartGroup.append('g')
+                const xAxisGroupBar = chartGroup.append('g')
                     .attr('class', 'axis')
                     .attr('transform', `translate(0, ${height})`)
                     .call(xAxis);
+                this.applyThemeToAxes(xAxisGroupBar);
 
-                chartGroup.append('g')
+                const yAxisGroupBar = chartGroup.append('g')
                     .attr('class', 'axis')
                     .call(yAxis);
+                this.applyThemeToAxes(yAxisGroupBar);
 
                 // Add "now" line in forecast mode
                 if (this.config.forecast) {
@@ -1151,24 +1245,28 @@
                     })
                     .ticks(yTicks);
 
-                chartGroup.append('g')
+                const xAxisGroupDots = chartGroup.append('g')
                     .attr('class', 'axis')
                     .attr('transform', `translate(0, ${height})`)
                     .call(xAxis);
+                this.applyThemeToAxes(xAxisGroupDots);
 
-                chartGroup.append('g')
+                const yAxisGroupDots = chartGroup.append('g')
                     .attr('class', 'axis')
                     .call(yAxis);
+                this.applyThemeToAxes(yAxisGroupDots);
 
                 // Add grid
-                chartGroup.append('g')
+                const xGridGroupDots = chartGroup.append('g')
                     .attr('class', 'grid')
                     .attr('transform', `translate(0, ${height})`)
                     .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(''));
+                this.applyThemeToGrid(xGridGroupDots);
 
-                chartGroup.append('g')
+                const yGridGroupDots = chartGroup.append('g')
                     .attr('class', 'grid')
                     .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+                this.applyThemeToGrid(yGridGroupDots);
 
                 // Add "now" line in forecast mode
                 if (this.config.forecast) {
@@ -1209,7 +1307,7 @@
                         .attr('cy', d => yScale(this.getMetricValue(d, metric)))
                         .attr('r', (this.config.dataType === 'diff' || this.config.dataType === 'speed') ? this.pointSize + 2 : this.pointSize + 1) // Slightly larger dots for better visibility
                         .attr('fill', this.color(index))
-                        .attr('stroke', 'white')
+                        .attr('stroke', this.themeColors.pointStroke)
                         .attr('stroke-width', 1)
                         .attr('opacity', 0.8)
                         .on('mouseover', (event, d) => {
@@ -1226,7 +1324,9 @@
 
             createLegend() {
                 const legend = d3.select('#legend');
-                legend.html('');
+                legend.html('')
+                    .style('background', this.themeColors.legendBackground)
+                    .style('color', this.themeColors.text);
 
                 const metrics = this.config.metrics.split(',').map(m => m.trim());
                 const parsedMetrics = this.parseMetrics(metrics);
@@ -1242,13 +1342,15 @@
                 
                 legend.append('div')
                     .attr('class', 'legend-item chart-title-bottom')
+                    .style('color', this.themeColors.text)
                     .text(titleText + periodText);
                 
                 // Add metrics
                 parsedMetrics.forEach((parsedMetric, index) => {
                     const metric = parsedMetric.metricName;
                     const legendItem = legend.append('div')
-                        .attr('class', 'legend-item');
+                        .attr('class', 'legend-item')
+                        .style('color', this.themeColors.text);
 
                     legendItem.append('div')
                         .attr('class', 'legend-color')
