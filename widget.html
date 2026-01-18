@@ -125,10 +125,57 @@
             }
 
             detectTheme() {
-                const bgColor = window.getComputedStyle(document.body).backgroundColor;
+                let bgColor;
+                let targetDoc;
+                
+                // Try to get background color from top window (if in iframe)
+                try {
+                    if (window.top && window.top !== window) {
+                        targetDoc = window.top.document;
+                    } else {
+                        targetDoc = document;
+                    }
+                } catch (e) {
+                    // If we can't access top window (cross-origin), try parent or current
+                    try {
+                        if (window.parent && window.parent !== window) {
+                            targetDoc = window.parent.document;
+                        } else {
+                            targetDoc = document;
+                        }
+                    } catch (e2) {
+                        // Fallback to current window
+                        targetDoc = document;
+                    }
+                }
+                
+                // Try to get background color from body, if transparent try html
+                try {
+                    const bodyStyle = window.getComputedStyle(targetDoc.body);
+                    bgColor = bodyStyle.backgroundColor;
+                    
+                    // If background is transparent or rgba with alpha < 1, check html element
+                    if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+                        const htmlStyle = window.getComputedStyle(targetDoc.documentElement);
+                        bgColor = htmlStyle.backgroundColor;
+                    }
+                } catch (e) {
+                    // Fallback to current document
+                    try {
+                        const bodyStyle = window.getComputedStyle(document.body);
+                        bgColor = bodyStyle.backgroundColor;
+                        if (bgColor === 'transparent' || bgColor === 'rgba(0, 0, 0, 0)') {
+                            const htmlStyle = window.getComputedStyle(document.documentElement);
+                            bgColor = htmlStyle.backgroundColor;
+                        }
+                    } catch (e2) {
+                        // Default to light theme if can't access
+                        return 'light';
+                    }
+                }
                 
                 // Parse RGB values
-                const rgbMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                const rgbMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
                 if (!rgbMatch) {
                     // Default to light theme if can't parse
                     return 'light';
@@ -142,7 +189,10 @@
                 // Using formula: 0.299*R + 0.587*G + 0.114*B
                 const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
                 
-                // If luminance is less than 0.5, it's dark
+                // If luminance is less than 0.5, it's dark; otherwise light
+                // For white (255, 255, 255): luminance = 1.0 -> light theme
+                // For black (0, 0, 0): luminance = 0.0 -> dark theme
+                // For gray (128, 128, 128): luminance = 0.5 -> light theme (threshold)
                 return luminance < 0.5 ? 'dark' : 'light';
             }
 
