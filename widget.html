@@ -23,20 +23,20 @@
             flex: 1;
             height: 100%;
             border-radius: 8px;
-            padding: 20px;
+            padding: 20px 20px 20px 20px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
         .period-buttons {
-            width: 60px;
+            width: 80px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 20px 10px;
+            gap: 4px;
+            padding: 10px 0 10px 5px;
             box-sizing: border-box;
         }
         .period-btn {
             width: 100%;
-            padding: 12px 8px;
+            padding: 8px 6px;
             border: 1px solid;
             border-radius: 4px;
             font-size: 12px;
@@ -349,7 +349,7 @@
                 }
 
                 // Adjust chart dimensions (account for padding and period buttons)
-                this.width = this.config.width - 40 - 60; // Account for padding and period buttons (60px)
+                this.width = this.config.width - 40 - 80; // Account for padding and period buttons (80px)
                 this.height = this.config.height - 40;
 
                 console.log('Widget config:', this.config);
